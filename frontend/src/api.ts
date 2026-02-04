@@ -22,7 +22,8 @@ export async function api<T>(
 export const contactsApi = {
   list: () => api<{ contacts: any[] }>('/contacts'),
   create: (data: any) => api('/contacts', { method: 'POST', body: JSON.stringify(data) }),
-  bulkCreate: (data: any) => api('/contacts/bulk', { method: 'POST', body: JSON.stringify(data) }),
+  bulkImport: (contacts: any[]) => api('/contacts/bulk', { method: 'POST', body: JSON.stringify({ contacts }) }),
+  bulkDelete: (ids: string[]) => api('/contacts/bulk', { method: 'DELETE', body: JSON.stringify({ ids }) }),
 };
 
 export const campaignsApi = {
