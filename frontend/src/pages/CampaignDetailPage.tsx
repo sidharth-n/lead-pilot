@@ -1,14 +1,23 @@
 import { useEffect, useState } from 'react';
-import { useParams } from 'react-router-dom';
-import { Play, Pause, UserPlus, Reply, RefreshCw, Eye, Search, Sparkles } from 'lucide-react';
+import { useParams, useNavigate } from 'react-router-dom';
+import { Play, Pause, UserPlus, Reply, RefreshCw, Eye, Search, Sparkles, Settings, Trash2, X, ChevronDown, ChevronUp } from 'lucide-react';
 import { Layout } from '../components/Layout';
 import { Button, Card, StatusBadge } from '../components/ui';
 import { PreviewEmailModal } from '../components/PreviewEmailModal';
 import { campaignsApi, contactsApi, researchApi, generationApi } from '../api';
 import { format } from 'date-fns';
 
+// Available template variables
+const VARIABLES = [
+  { key: 'first_name', label: 'First Name' },
+  { key: 'last_name', label: 'Last Name' },
+  { key: 'company', label: 'Company' },
+  { key: 'job_title', label: 'Job Title' },
+];
+
 export default function CampaignDetailPage() {
   const { id } = useParams<{ id: string }>();
+  const navigate = useNavigate();
   const [campaign, setCampaign] = useState<any>(null);
   const [leads, setLeads] = useState<any[]>([]);
   const [stats, setStats] = useState<any>(null);
@@ -25,6 +34,12 @@ export default function CampaignDetailPage() {
   
   // Preview Modal State
   const [previewLeadId, setPreviewLeadId] = useState<string | null>(null);
+  
+  // Settings Modal State
+  const [showSettings, setShowSettings] = useState(false);
+  const [settingsExpanded, setSettingsExpanded] = useState('email'); // 'email' | 'ai' | 'followup'
+  const [saving, setSaving] = useState(false);
+  const [editData, setEditData] = useState<any>(null);
 
   // Poll for updates every 2s
   useEffect(() => {
@@ -91,6 +106,49 @@ export default function CampaignDetailPage() {
       alert('Failed: ' + err.message);
     } finally {
       setSimulating(null);
+    }
+  };
+
+  // Open Settings Modal
+  const openSettings = () => {
+    setEditData({
+      name: campaign.name,
+      from_name: campaign.from_name,
+      from_email: campaign.from_email,
+      subject_template: campaign.subject_template,
+      body_template: campaign.body_template,
+      ai_prompt: campaign.ai_prompt || '',
+      follow_up_delay_minutes: campaign.follow_up_delay_minutes,
+      follow_up_subject: campaign.follow_up_subject || '',
+      follow_up_body: campaign.follow_up_body || '',
+    });
+    setShowSettings(true);
+  };
+
+  // Save Settings
+  const handleSaveSettings = async () => {
+    if (!id) return;
+    setSaving(true);
+    try {
+      await campaignsApi.update(id, editData);
+      setShowSettings(false);
+      loadData();
+    } catch (err: any) {
+      alert('Failed to save: ' + err.message);
+    } finally {
+      setSaving(false);
+    }
+  };
+
+  // Delete Campaign
+  const handleDelete = async () => {
+    if (!id) return;
+    if (!confirm('Are you sure you want to delete this campaign? This cannot be undone.')) return;
+    try {
+      await campaignsApi.delete(id);
+      navigate('/campaigns');
+    } catch (err: any) {
+      alert('Failed to delete: ' + err.message);
     }
   };
 
@@ -192,6 +250,9 @@ export default function CampaignDetailPage() {
           </Button>
           <Button variant="outline" onClick={() => setShowAddLeads(true)}>
             <UserPlus className="w-4 h-4 mr-2" /> Add Leads
+          </Button>
+          <Button variant="outline" onClick={openSettings}>
+            <Settings className="w-4 h-4 mr-2" /> Settings
           </Button>
         </div>
       </div>
@@ -451,6 +512,185 @@ export default function CampaignDetailPage() {
            onClose={() => setPreviewLeadId(null)}
            onSave={loadData}
          />
+      )}
+
+      {/* Settings Modal */}
+      {showSettings && editData && (
+        <div className="fixed inset-0 bg-black/50 flex items-center justify-center z-50 p-4">
+          <div className="bg-white rounded-2xl w-full max-w-2xl max-h-[90vh] overflow-hidden shadow-2xl">
+            {/* Header */}
+            <div className="flex items-center justify-between px-6 py-4 border-b bg-gray-50">
+              <h2 className="text-xl font-bold text-gray-900">Campaign Settings</h2>
+              <button onClick={() => setShowSettings(false)} className="text-gray-400 hover:text-gray-600">
+                <X className="w-5 h-5" />
+              </button>
+            </div>
+            
+            <div className="p-6 space-y-4 max-h-[60vh] overflow-y-auto">
+              {/* Basic Info */}
+              <div className="space-y-3">
+                <div>
+                  <label className="block text-sm font-medium text-gray-700 mb-1">Campaign Name</label>
+                  <input
+                    className="w-full rounded-lg border-gray-200 px-3 py-2 border focus:border-blue-500 focus:ring-blue-500"
+                    value={editData.name}
+                    onChange={e => setEditData({ ...editData, name: e.target.value })}
+                  />
+                </div>
+                <div className="grid grid-cols-2 gap-3">
+                  <div>
+                    <label className="block text-sm font-medium text-gray-700 mb-1">From Name</label>
+                    <input
+                      className="w-full rounded-lg border-gray-200 px-3 py-2 border focus:border-blue-500 focus:ring-blue-500"
+                      value={editData.from_name}
+                      onChange={e => setEditData({ ...editData, from_name: e.target.value })}
+                    />
+                  </div>
+                  <div>
+                    <label className="block text-sm font-medium text-gray-700 mb-1">From Email</label>
+                    <input
+                      className="w-full rounded-lg border-gray-200 px-3 py-2 border focus:border-blue-500 focus:ring-blue-500"
+                      value={editData.from_email}
+                      onChange={e => setEditData({ ...editData, from_email: e.target.value })}
+                    />
+                  </div>
+                </div>
+              </div>
+              
+              {/* Email Section - Collapsible */}
+              <div className="border border-gray-200 rounded-xl overflow-hidden">
+                <button
+                  type="button"
+                  onClick={() => setSettingsExpanded(settingsExpanded === 'email' ? '' : 'email')}
+                  className="w-full px-4 py-3 bg-gray-50 flex items-center justify-between text-left hover:bg-gray-100"
+                >
+                  <span className="font-medium text-gray-900">📧 Email Template</span>
+                  {settingsExpanded === 'email' ? <ChevronUp className="w-4 h-4" /> : <ChevronDown className="w-4 h-4" />}
+                </button>
+                {settingsExpanded === 'email' && (
+                  <div className="p-4 space-y-3 border-t">
+                    <div>
+                      <label className="block text-sm font-medium text-gray-700 mb-1">Subject Line</label>
+                      <input
+                        className="w-full rounded-lg border-gray-200 px-3 py-2 border focus:border-blue-500 focus:ring-blue-500"
+                        value={editData.subject_template}
+                        onChange={e => setEditData({ ...editData, subject_template: e.target.value })}
+                      />
+                      <div className="flex gap-1 mt-1">
+                        {VARIABLES.map(v => (
+                          <button
+                            key={v.key}
+                            type="button"
+                            onClick={() => setEditData({ ...editData, subject_template: editData.subject_template + `{{${v.key}}}` })}
+                            className="px-2 py-0.5 text-xs bg-blue-50 text-blue-600 rounded hover:bg-blue-100"
+                          >
+                            {v.label}
+                          </button>
+                        ))}
+                      </div>
+                    </div>
+                    <div>
+                      <label className="block text-sm font-medium text-gray-700 mb-1">Email Body</label>
+                      <textarea
+                        rows={5}
+                        className="w-full rounded-lg border-gray-200 px-3 py-2 border focus:border-blue-500 focus:ring-blue-500 font-mono text-sm"
+                        value={editData.body_template}
+                        onChange={e => setEditData({ ...editData, body_template: e.target.value })}
+                      />
+                    </div>
+                  </div>
+                )}
+              </div>
+              
+              {/* AI Section - Collapsible */}
+              <div className="border border-purple-200 rounded-xl overflow-hidden">
+                <button
+                  type="button"
+                  onClick={() => setSettingsExpanded(settingsExpanded === 'ai' ? '' : 'ai')}
+                  className="w-full px-4 py-3 bg-purple-50 flex items-center justify-between text-left hover:bg-purple-100"
+                >
+                  <span className="font-medium text-purple-900">✨ AI Personalization</span>
+                  {settingsExpanded === 'ai' ? <ChevronUp className="w-4 h-4" /> : <ChevronDown className="w-4 h-4" />}
+                </button>
+                {settingsExpanded === 'ai' && (
+                  <div className="p-4 border-t">
+                    <label className="block text-sm font-medium text-gray-700 mb-1">AI Instructions</label>
+                    <textarea
+                      rows={4}
+                      className="w-full rounded-lg border-purple-200 px-3 py-2 border focus:border-purple-500 focus:ring-purple-500"
+                      value={editData.ai_prompt}
+                      onChange={e => setEditData({ ...editData, ai_prompt: e.target.value })}
+                      placeholder="Tell the AI how to personalize emails..."
+                    />
+                  </div>
+                )}
+              </div>
+              
+              {/* Follow-up Section - Collapsible */}
+              <div className="border border-orange-200 rounded-xl overflow-hidden">
+                <button
+                  type="button"
+                  onClick={() => setSettingsExpanded(settingsExpanded === 'followup' ? '' : 'followup')}
+                  className="w-full px-4 py-3 bg-orange-50 flex items-center justify-between text-left hover:bg-orange-100"
+                >
+                  <span className="font-medium text-orange-900">🔄 Follow-up Settings</span>
+                  {settingsExpanded === 'followup' ? <ChevronUp className="w-4 h-4" /> : <ChevronDown className="w-4 h-4" />}
+                </button>
+                {settingsExpanded === 'followup' && (
+                  <div className="p-4 space-y-3 border-t">
+                    <div>
+                      <label className="block text-sm font-medium text-gray-700 mb-1">Follow-up Subject</label>
+                      <input
+                        className="w-full rounded-lg border-gray-200 px-3 py-2 border focus:border-orange-500 focus:ring-orange-500"
+                        value={editData.follow_up_subject}
+                        onChange={e => setEditData({ ...editData, follow_up_subject: e.target.value })}
+                      />
+                    </div>
+                    <div>
+                      <label className="block text-sm font-medium text-gray-700 mb-1">Follow-up Body</label>
+                      <textarea
+                        rows={4}
+                        className="w-full rounded-lg border-gray-200 px-3 py-2 border focus:border-orange-500 focus:ring-orange-500 font-mono text-sm"
+                        value={editData.follow_up_body}
+                        onChange={e => setEditData({ ...editData, follow_up_body: e.target.value })}
+                      />
+                    </div>
+                    <div>
+                      <label className="block text-sm font-medium text-gray-700 mb-1">Delay (minutes)</label>
+                      <input
+                        type="number"
+                        min="1"
+                        className="w-24 rounded-lg border-gray-200 px-3 py-2 border focus:border-orange-500 focus:ring-orange-500"
+                        value={editData.follow_up_delay_minutes}
+                        onChange={e => setEditData({ ...editData, follow_up_delay_minutes: parseInt(e.target.value) || 1 })}
+                      />
+                    </div>
+                  </div>
+                )}
+              </div>
+            </div>
+            
+            {/* Footer */}
+            <div className="flex items-center justify-between px-6 py-4 bg-gray-50 border-t">
+              <Button
+                variant="ghost"
+                className="text-red-600 hover:bg-red-50"
+                onClick={handleDelete}
+                disabled={campaign.status === 'active'}
+              >
+                <Trash2 className="w-4 h-4 mr-2" /> Delete Campaign
+              </Button>
+              <div className="flex gap-2">
+                <Button variant="ghost" onClick={() => setShowSettings(false)}>
+                  Cancel
+                </Button>
+                <Button onClick={handleSaveSettings} disabled={saving}>
+                  {saving ? 'Saving...' : 'Save Changes'}
+                </Button>
+              </div>
+            </div>
+          </div>
+        </div>
       )}
     </Layout>
   );

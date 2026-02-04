@@ -124,6 +124,85 @@ campaignsApi.post('/', async (c) => {
   }
 });
 
+// PUT /api/campaigns/:id - Update campaign
+campaignsApi.put('/:id', async (c) => {
+  try {
+    const id = c.req.param('id');
+    const body = await c.req.json<Partial<CreateCampaignInput>>();
+    
+    // Check campaign exists
+    const campaign = queryOne<Campaign>(
+      'SELECT * FROM campaigns WHERE id = ? AND user_id = ?',
+      [id, TEST_USER_ID]
+    );
+    
+    if (!campaign) {
+      return c.json(CommonErrors.campaignNotFound(), 404);
+    }
+    
+    // Build update query dynamically
+    const updates: string[] = [];
+    const values: any[] = [];
+    
+    if (body.name !== undefined) {
+      updates.push('name = ?');
+      values.push(body.name.trim());
+    }
+    if (body.from_name !== undefined) {
+      updates.push('from_name = ?');
+      values.push(body.from_name.trim());
+    }
+    if (body.from_email !== undefined) {
+      updates.push('from_email = ?');
+      values.push(body.from_email.trim().toLowerCase());
+    }
+    if (body.subject_template !== undefined) {
+      updates.push('subject_template = ?');
+      values.push(body.subject_template.trim());
+    }
+    if (body.body_template !== undefined) {
+      updates.push('body_template = ?');
+      values.push(body.body_template.trim());
+    }
+    if (body.ai_prompt !== undefined) {
+      updates.push('ai_prompt = ?');
+      values.push(body.ai_prompt?.trim() || null);
+    }
+    if (body.follow_up_delay_minutes !== undefined) {
+      updates.push('follow_up_delay_minutes = ?');
+      values.push(body.follow_up_delay_minutes);
+    }
+    if (body.follow_up_subject !== undefined) {
+      updates.push('follow_up_subject = ?');
+      values.push(body.follow_up_subject?.trim() || null);
+    }
+    if (body.follow_up_body !== undefined) {
+      updates.push('follow_up_body = ?');
+      values.push(body.follow_up_body?.trim() || null);
+    }
+    
+    if (updates.length === 0) {
+      return c.json(createError('No fields to update', ErrorCodes.VALIDATION_ERROR), 400);
+    }
+    
+    updates.push('updated_at = datetime("now")');
+    values.push(id);
+    
+    execute(
+      `UPDATE campaigns SET ${updates.join(', ')} WHERE id = ?`,
+      values
+    );
+    
+    const updatedCampaign = queryOne<Campaign>('SELECT * FROM campaigns WHERE id = ?', [id]);
+    console.log(`📝 Campaign "${updatedCampaign?.name}" updated`);
+    
+    return c.json({ campaign: updatedCampaign });
+  } catch (error) {
+    console.error('Error updating campaign:', error);
+    return c.json(CommonErrors.internalError(), 500);
+  }
+});
+
 // POST /api/campaigns/:id/start - Start campaign
 campaignsApi.post('/:id/start', (c) => {
   try {
