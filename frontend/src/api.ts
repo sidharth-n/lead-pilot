@@ -41,3 +41,10 @@ export const campaignsApi = {
 export const processorApi = {
   run: () => api('/processor/run', { method: 'POST' }),
 };
+
+export const generationApi = {
+  getStatus: (campaignId: string) => api<{ leads: { id: string; generation_status: string }[] }>(`/generation/${campaignId}/status`),
+  getLead: (leadId: string) => api<{ lead: any }>(`/generation/lead/${leadId}`),
+  update: (leadId: string, data: any) => api(`/generation/lead/${leadId}`, { method: 'PUT', body: JSON.stringify(data) }),
+  regenerate: (leadId: string) => api(`/generation/lead/${leadId}/regenerate`, { method: 'POST' }),
+};

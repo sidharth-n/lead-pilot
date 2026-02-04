@@ -1,12 +1,12 @@
-// src/index.ts
-import 'dotenv/config'; // Load .env file
-
+import 'dotenv/config';
 import { serve } from '@hono/node-server';
 import { Hono } from 'hono';
 import { cors } from 'hono/cors';
 import { logger } from 'hono/logger';
-import { api } from './api/routes';
 import { initializeDatabase } from './database/init';
+import { emailGenerator } from './jobs/email-generator';
+import { processor } from './jobs/processor';
+import { api } from './api/routes';
 
 const app = new Hono();
 
@@ -14,21 +14,18 @@ const app = new Hono();
 app.use('*', logger());
 app.use('*', cors());
 
-// Mount API
+// Mount API Routes
 app.route('/api', api);
 
-// Root
-app.get('/', (c) => c.json({ 
-  name: 'Cadence API',
-  version: '1.0.0',
-  status: 'running'
-}));
+// Root endpoint check
+app.get('/', (c) => c.text('LeadPilot API is running 🚀'));
 
-// Initialize
+// Initialize Services
 console.log('🚀 Starting Cadence...');
 initializeDatabase();
+emailGenerator.start();
 
-// Start processor (comment out for manual control during testing)
+// Start processor (commented out by default to avoid conflicts during dev, enable if needed)
 // processor.start();
 
 const port = parseInt(process.env.PORT || '3000', 10);

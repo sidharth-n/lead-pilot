@@ -64,6 +64,7 @@ export interface CampaignLead {
   generated_body: string | null;
   generated_follow_up_subject: string | null;
   generated_follow_up_body: string | null;
+  generation_status: 'pending' | 'generating' | 'ready' | 'failed' | 'skipped';
   last_error: string | null;
   retry_count: number;
   created_at: string;
@@ -152,6 +153,7 @@ export interface AIGenerateRequest {
     last_name?: string;
     company?: string;
     job_title?: string;
+    headline?: string;
   };
   template: string;
 }

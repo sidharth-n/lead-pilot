@@ -1,8 +1,9 @@
 import { useEffect, useState } from 'react';
 import { useParams } from 'react-router-dom';
-import { Play, Pause, UserPlus, Reply, RefreshCw } from 'lucide-react';
+import { Play, Pause, UserPlus, Reply, RefreshCw, Eye } from 'lucide-react';
 import { Layout } from '../components/Layout';
 import { Button, Card, StatusBadge } from '../components/ui';
+import { PreviewEmailModal } from '../components/PreviewEmailModal';
 import { campaignsApi, contactsApi } from '../api';
 import { format } from 'date-fns';
 
@@ -16,6 +17,9 @@ export default function CampaignDetailPage() {
   const [showAddLeads, setShowAddLeads] = useState(false);
   const [selectedContacts, setSelectedContacts] = useState<string[]>([]);
   const [simulating, setSimulating] = useState<string | null>(null);
+  
+  // Preview Modal State
+  const [previewLeadId, setPreviewLeadId] = useState<string | null>(null);
 
   // Poll for updates every 2s
   useEffect(() => {
@@ -86,6 +90,18 @@ export default function CampaignDetailPage() {
     }
   };
 
+  // Calculate Generation Stats
+  const generationStats = leads ? {
+    total: leads.length,
+    ready: leads.filter(l => l.generation_status === 'ready').length,
+    pending: leads.filter(l => l.generation_status === 'pending' || l.generation_status === 'generating').length,
+    failed: leads.filter(l => l.generation_status === 'failed').length,
+  } : { total: 0, ready: 0, pending: 0, failed: 0 };
+
+  const progressPercent = generationStats.total > 0 
+    ? Math.round((generationStats.ready / generationStats.total) * 100) 
+    : 0;
+
   if (loading || !campaign) {
     return <Layout><div className="text-center py-20">Loading...</div></Layout>;
   }
@@ -120,6 +136,32 @@ export default function CampaignDetailPage() {
           </Button>
         </div>
       </div>
+
+      {/* AI Generation Progress Bar */}
+      {leads.length > 0 && campaign.ai_prompt && (
+        <Card className="mb-8 p-4 bg-indigo-50 border-indigo-100">
+           <div className="flex justify-between items-center mb-2">
+             <div className="flex items-center gap-2">
+               <RefreshCw className={`w-4 h-4 text-indigo-600 ${generationStats.pending > 0 ? 'animate-spin' : ''}`} />
+               <h3 className="font-semibold text-indigo-900">AI Personalization Progress</h3>
+             </div>
+             <span className="text-indigo-700 text-sm font-medium">{generationStats.ready} / {generationStats.total} Emails Ready</span>
+           </div>
+           
+           <div className="w-full bg-indigo-200 rounded-full h-2.5">
+             <div 
+               className="bg-indigo-600 h-2.5 rounded-full transition-all duration-500" 
+               style={{ width: `${progressPercent}%` }}
+             ></div>
+           </div>
+           
+           {generationStats.failed > 0 && (
+             <div className="mt-2 text-xs text-red-600 font-medium">
+               ⚠️ {generationStats.failed} generations failed. Check leads below.
+             </div>
+           )}
+        </Card>
+      )}
 
       {/* Add Leads Modal/Panel */}
       {showAddLeads && (
@@ -195,13 +237,14 @@ export default function CampaignDetailPage() {
               <tr>
                 <th className="px-6 py-3 font-medium text-gray-500">Contact</th>
                 <th className="px-6 py-3 font-medium text-gray-500">Status</th>
+                <th className="px-6 py-3 font-medium text-gray-500">Generation</th>
                 <th className="px-6 py-3 font-medium text-gray-500">Timeline</th>
                 <th className="px-6 py-3 font-medium text-gray-500 text-right">Actions</th>
               </tr>
             </thead>
             <tbody className="divide-y divide-gray-100">
               {leads?.length === 0 ? (
-                <tr><td colSpan={4} className="px-6 py-10 text-center text-gray-500">No leads added yet.</td></tr>
+                <tr><td colSpan={5} className="px-6 py-10 text-center text-gray-500">No leads added yet.</td></tr>
               ) : (
                 leads?.map(lead => (
                   <tr key={lead.id} className="hover:bg-gray-50 transition-colors">
@@ -211,6 +254,22 @@ export default function CampaignDetailPage() {
                     </td>
                     <td className="px-6 py-4">
                       <StatusBadge status={lead.status} />
+                    </td>
+                    <td className="px-6 py-4">
+                       {/* Generation Status Pill */}
+                       {lead.generation_status === 'ready' ? (
+                         <span className="inline-flex items-center px-2 py-0.5 rounded text-xs font-medium bg-green-100 text-green-800">
+                           Ready
+                         </span>
+                       ) : lead.generation_status === 'failed' ? (
+                         <span className="inline-flex items-center px-2 py-0.5 rounded text-xs font-medium bg-red-100 text-red-800">
+                           Failed
+                         </span>
+                       ) : (
+                         <span className="inline-flex items-center px-2 py-0.5 rounded text-xs font-medium bg-yellow-100 text-yellow-800">
+                           {lead.generation_status || 'Pending'}
+                         </span>
+                       )}
                     </td>
                     <td className="px-6 py-4 text-xs text-gray-500 space-y-1">
                       {lead.email_sent_at && (
@@ -227,8 +286,17 @@ export default function CampaignDetailPage() {
                         </div>
                       )}
                     </td>
-                    <td className="px-6 py-4 text-right">
-                      {/* SIMULATE REPLY BUTTON - CRITICAL FOR DEMO */}
+                    <td className="px-6 py-4 text-right flex justify-end gap-2">
+                      {/* PREVIEW BUTTON */}
+                       <Button 
+                        size="sm" 
+                        variant="outline"
+                        onClick={() => setPreviewLeadId(lead.id)}
+                      >
+                        <Eye className="w-3 h-3 mr-1" /> Preview
+                      </Button>
+
+                      {/* SIMULATE REPLY BUTTON */}
                       {['sent', 'waiting_follow_up'].includes(lead.status) && (
                         <Button 
                           size="sm" 
@@ -241,6 +309,19 @@ export default function CampaignDetailPage() {
                           {simulating === lead.id ? 'Marking...' : 'Simulate Reply'}
                         </Button>
                       )}
+
+                        {/* Quick Regenerate */}
+                        {lead.status === 'pending' && lead.generation_status === 'failed' && (
+                            <Button 
+                                size="sm" 
+                                variant="danger" 
+                                className="h-8 w-8 p-0"
+                                onClick={() => setPreviewLeadId(lead.id)}
+                                title="Regenerate"
+                            >
+                                <RefreshCw className="w-4 h-4" />
+                            </Button>
+                        )}
                     </td>
                   </tr>
                 ))
@@ -249,6 +330,17 @@ export default function CampaignDetailPage() {
           </table>
         </div>
       </Card>
+      
+      {/* Preview Modal */}
+      {previewLeadId && id && campaign && (
+         <PreviewEmailModal 
+           campaignId={id} 
+           leadId={previewLeadId} 
+           aiPrompt={campaign.ai_prompt}
+           onClose={() => setPreviewLeadId(null)}
+           onSave={loadData}
+         />
+      )}
     </Layout>
   );
 }

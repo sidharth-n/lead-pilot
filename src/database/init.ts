@@ -72,6 +72,7 @@ CREATE TABLE IF NOT EXISTS campaign_leads (
   generated_body TEXT,
   generated_follow_up_subject TEXT,
   generated_follow_up_body TEXT,
+  generation_status TEXT DEFAULT 'pending' CHECK(generation_status IN ('pending', 'generating', 'ready', 'failed', 'skipped')),
   last_error TEXT,
   retry_count INTEGER DEFAULT 0,
   created_at TEXT DEFAULT (datetime('now')),

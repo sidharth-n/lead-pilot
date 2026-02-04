@@ -149,7 +149,15 @@ export class CampaignProcessor {
       let subject = campaign.subject_template;
       let body = campaign.body_template;
 
-      if (campaign.ai_prompt) {
+      // USE PRE-GENERATED CONTENT (Option C Architecture)
+      if (lead.generated_body && lead.generation_status === 'ready') {
+        body = lead.generated_body;
+        subject = lead.generated_subject || subject;
+        console.log(`✨ Using pre-generated email for ${lead.email}`);
+      } 
+      // FALLBACK: On-the-fly generation (Option B / Mock)
+      else if (campaign.ai_prompt) {
+        console.log(`⚠️ No pre-generated email for ${lead.email}, generating now...`);
         const aiResult = await aiService.generateEmail({
           system_prompt: campaign.ai_prompt,
           contact_data: {
@@ -168,9 +176,8 @@ export class CampaignProcessor {
       } else {
         // Basic template replacement
         body = this.replaceTemplateVars(body, lead);
+        subject = this.replaceTemplateVars(subject, lead);
       }
-
-      subject = this.replaceTemplateVars(subject, lead);
 
       // Send email
       const result = await emailService.send({

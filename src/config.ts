@@ -15,4 +15,9 @@ export const config = {
     fromEmail: process.env.EMAIL_FROM || 'onboarding@resend.dev',
     fromName: process.env.EMAIL_FROM_NAME || 'LeadPilot',
   },
+  ai: {
+    useReal: process.env.USE_REAL_AI === 'true',
+    openaiApiKey: process.env.OPENAI_API_KEY || '',
+    model: process.env.AI_MODEL || 'gpt-4o-mini',
+  },
 };

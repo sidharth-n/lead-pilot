@@ -1,6 +1,8 @@
 // src/services/ai.service.ts
 
+import { config } from '../config';
 import { AIGenerateRequest, AIGenerateResult, IAIService } from '../types';
+import { openaiService } from './openai.service';
 
 export class MockAIService implements IAIService {
   async generateEmail(request: AIGenerateRequest): Promise<AIGenerateResult> {
@@ -36,5 +38,15 @@ export class MockAIService implements IAIService {
   }
 }
 
-// Singleton instance
-export const aiService = new MockAIService();
+// Export the correct service based on config
+const mockService = new MockAIService();
+
+export const aiService: IAIService = config.ai.useReal ? openaiService : mockService;
+
+// Log which service is being used
+if (config.ai.useReal) {
+  console.log('🤖 Using REAL AI service (OpenAI)');
+} else {
+  console.log('🤖 Using MOCK AI service');
+}
+

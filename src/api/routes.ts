@@ -1,16 +1,18 @@
 // src/api/routes.ts
 
 import { Hono } from 'hono';
-import { contactsApi } from './contacts.api';
 import { campaignsApi } from './campaigns.api';
+import { contactsApi } from './contacts.api';
+import { generationApi } from './generation.api';
 import { webhooksApi } from './webhooks.api';
 import { processor } from '../jobs/processor';
 
-const api = new Hono();
+export const api = new Hono();
 
-// Mount sub-routes
-api.route('/contacts', contactsApi);
+// Mount sub-routers
 api.route('/campaigns', campaignsApi);
+api.route('/contacts', contactsApi);
+api.route('/generation', generationApi);
 api.route('/webhooks', webhooksApi);
 
 // Health check
@@ -22,14 +24,12 @@ api.post('/processor/run', async (c) => {
   return c.json({ success: true, message: 'Processor run complete' });
 });
 
-api.post('/processor/start', (c) => {
-  processor.start();
-  return c.json({ success: true, message: 'Processor started' });
-});
-
 api.post('/processor/stop', (c) => {
   processor.stop();
   return c.json({ success: true, message: 'Processor stopped' });
 });
 
-export { api };
+api.post('/processor/start', (c) => {
+  processor.start();
+  return c.json({ success: true, message: 'Processor started' });
+});
