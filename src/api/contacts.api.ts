@@ -66,8 +66,8 @@ contactsApi.post('/', async (c) => {
     
     try {
       execute(
-        `INSERT INTO contacts (id, user_id, email, first_name, last_name, company, job_title, location, linkedin_url, custom_data)
-         VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?)`,
+        `INSERT INTO contacts (id, user_id, email, first_name, last_name, company, job_title, headline, phone_number, website_url, location, linkedin_url, custom_data)
+         VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)`,
         [
           id,
           TEST_USER_ID,
@@ -76,6 +76,9 @@ contactsApi.post('/', async (c) => {
           body.last_name?.trim() || null,
           body.company?.trim() || null,
           body.job_title?.trim() || null,
+          body.headline?.trim() || null,
+          body.phone_number?.trim() || null,
+          body.website_url?.trim() || null,
           body.location?.trim() || null,
           body.linkedin_url?.trim() || null,
           JSON.stringify(body.custom_data || {}),
@@ -130,8 +133,8 @@ contactsApi.post('/bulk', async (c) => {
       
       try {
         execute(
-          `INSERT INTO contacts (id, user_id, email, first_name, last_name, company, job_title, location, linkedin_url, custom_data)
-           VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?)`,
+          `INSERT INTO contacts (id, user_id, email, first_name, last_name, company, job_title, headline, phone_number, website_url, location, linkedin_url, custom_data)
+           VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)`,
           [
             uuid(),
             TEST_USER_ID,
@@ -140,6 +143,9 @@ contactsApi.post('/bulk', async (c) => {
             contact.last_name?.trim() || null,
             contact.company?.trim() || null,
             contact.job_title?.trim() || null,
+            contact.headline?.trim() || null,
+            contact.phone_number?.trim() || null,
+            contact.website_url?.trim() || null,
             contact.location?.trim() || null,
             contact.linkedin_url?.trim() || null,
             JSON.stringify(contact.custom_data || {}),

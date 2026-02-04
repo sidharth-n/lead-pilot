@@ -1,6 +1,6 @@
 import { useState, useRef } from 'react';
 import Papa from 'papaparse';
-import { Upload, X, Check, RefreshCw } from 'lucide-react';
+import { Upload, X, Check, RefreshCw, Download } from 'lucide-react';
 import { Button, Card } from './ui';
 import { contactsApi } from '../api';
 
@@ -19,6 +19,11 @@ export function ImportLeadsModal({ onClose, onSuccess }: ImportLeadsModalProps) 
     first_name: '',
     last_name: '',
     company: '',
+    job_title: '',
+    headline: '',
+    phone_number: '',
+    website_url: '',
+    location: '',
     linkedin_url: ''
   });
   const [results, setResults] = useState<{ imported: number; skipped: number; errors?: string[] } | null>(null);
@@ -35,16 +40,21 @@ export function ImportLeadsModal({ onClose, onSuccess }: ImportLeadsModalProps) 
           setHeaders(results.meta.fields || []);
           setPreviewData(results.data);
           
-          // Auto-guess mapping
+          // Auto-guess mapping (Prosp.ai compatible)
           const newMapping = { ...mapping };
           const fields = results.meta.fields || [];
           
           fields.forEach(field => {
             const lower = field.toLowerCase();
             if (lower.includes('email')) newMapping.email = field;
-            else if (lower.includes('first') || lower.includes('given')) newMapping.first_name = field;
+            else if (lower === 'name' || lower.includes('first') || lower.includes('given')) newMapping.first_name = field;
             else if (lower.includes('last') || lower.includes('sur')) newMapping.last_name = field;
             else if (lower.includes('company') || lower.includes('org')) newMapping.company = field;
+            else if (lower.includes('jobtitle') || lower.includes('job_title') || lower.includes('title') || lower.includes('position')) newMapping.job_title = field;
+            else if (lower.includes('headline')) newMapping.headline = field;
+            else if (lower.includes('phone')) newMapping.phone_number = field;
+            else if (lower.includes('website') || lower.includes('url') && !lower.includes('linkedin')) newMapping.website_url = field;
+            else if (lower.includes('location')) newMapping.location = field;
             else if (lower.includes('linkedin') || lower.includes('profile')) newMapping.linkedin_url = field;
           });
           setMapping(newMapping);
@@ -67,6 +77,11 @@ export function ImportLeadsModal({ onClose, onSuccess }: ImportLeadsModalProps) 
           first_name: row[mapping.first_name],
           last_name: row[mapping.last_name],
           company: row[mapping.company],
+          job_title: row[mapping.job_title],
+          headline: row[mapping.headline],
+          phone_number: row[mapping.phone_number],
+          website_url: row[mapping.website_url],
+          location: row[mapping.location],
           linkedin_url: row[mapping.linkedin_url],
           custom_data: row // Keep original data too
         })).filter((c: any) => c.email); // Must have email
@@ -83,6 +98,7 @@ export function ImportLeadsModal({ onClose, onSuccess }: ImportLeadsModalProps) 
       }
     });
   };
+
 
   return (
     <div className="fixed inset-0 bg-black/50 flex items-center justify-center p-4 z-50">
@@ -108,8 +124,16 @@ export function ImportLeadsModal({ onClose, onSuccess }: ImportLeadsModalProps) 
             <Button onClick={() => fileInputRef.current?.click()}>
               Select CSV File
             </Button>
-            <div className="mt-4 text-sm text-gray-500">
-              Expected columns: Email, First Name, Company...
+            <div className="mt-6 pt-4 border-t">
+              <a 
+                href="/lead-template.csv" 
+                download="lead-template.csv"
+                className="inline-flex items-center gap-2 text-sm text-blue-600 hover:text-blue-800"
+              >
+                <Download className="w-4 h-4" />
+                Download CSV Template
+              </a>
+              <p className="text-xs text-gray-400 mt-1">Compatible with Prosp.ai exports</p>
             </div>
           </div>
         )}
@@ -120,26 +144,31 @@ export function ImportLeadsModal({ onClose, onSuccess }: ImportLeadsModalProps) 
               We found {headers.length} columns. Please map them to LeadPilot fields.
             </div>
             
-            <div className="grid gap-4">
+            <div className="grid gap-3 max-h-80 overflow-y-auto">
               {[
                 { label: 'Email Address *', key: 'email', required: true },
-                { label: 'First Name', key: 'first_name' },
+                { label: 'Name / First Name', key: 'first_name' },
                 { label: 'Last Name', key: 'last_name' },
                 { label: 'Company', key: 'company' },
+                { label: 'Job Title', key: 'job_title' },
+                { label: 'Headline', key: 'headline' },
+                { label: 'Phone Number', key: 'phone_number' },
+                { label: 'Website URL', key: 'website_url' },
+                { label: 'Location', key: 'location' },
                 { label: 'LinkedIn URL', key: 'linkedin_url' },
               ].map((field) => (
-                <div key={field.key} className="grid grid-cols-2 items-center gap-4 border-b pb-4 last:border-0">
-                  <label className="font-medium text-gray-700">
+                <div key={field.key} className="grid grid-cols-2 items-center gap-4 border-b pb-3 last:border-0">
+                  <label className="font-medium text-gray-700 text-sm">
                     {field.label}
                   </label>
                   <select
-                    className="p-2 border rounded-md"
+                    className="p-2 border rounded-md text-sm"
                     value={mapping[field.key as keyof typeof mapping]}
                     onChange={(e) => setMapping(prev => ({ ...prev, [field.key]: e.target.value }))}
                   >
                     <option value="">-- Ignore --</option>
                     {headers.map(h => (
-                      <option key={h} value={h}>{h} (ex: {previewData[0]?.[h]})</option>
+                      <option key={h} value={h}>{h} (ex: {previewData[0]?.[h]?.substring?.(0, 20) || 'empty'})</option>
                     ))}
                   </select>
                 </div>

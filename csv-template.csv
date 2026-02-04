@@ -1,0 +1,2 @@
+name,email,phoneNumber,headline,jobTitle,location,company,websiteUrl,linkedin_url,Custom Column
+John Smith,johnsmith@gmail.com,1234567,European Medicines Agency,Product owner - John Smith regulatory procedures (product lifecycle),Netherlands,European Agency,http://johnsmith.eu,https://www.linkedin.com/in/johnsmith,Details 1

@@ -11,7 +11,7 @@ CREATE TABLE IF NOT EXISTS users (
   created_at TEXT DEFAULT (datetime('now'))
 );
 
--- Contacts table
+-- Contacts table (Prosp.ai compatible)
 CREATE TABLE IF NOT EXISTS contacts (
   id TEXT PRIMARY KEY,
   user_id TEXT NOT NULL REFERENCES users(id) ON DELETE CASCADE,
@@ -20,6 +20,9 @@ CREATE TABLE IF NOT EXISTS contacts (
   last_name TEXT,
   company TEXT,
   job_title TEXT,
+  headline TEXT,
+  phone_number TEXT,
+  website_url TEXT,
   location TEXT,
   linkedin_url TEXT,
   custom_data TEXT DEFAULT '{}',
@@ -27,6 +30,7 @@ CREATE TABLE IF NOT EXISTS contacts (
   created_at TEXT DEFAULT (datetime('now')),
   UNIQUE(user_id, email)
 );
+
 
 -- Campaigns table
 CREATE TABLE IF NOT EXISTS campaigns (

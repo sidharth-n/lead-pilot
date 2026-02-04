@@ -1,0 +1,3 @@
+name,email,phoneNumber,headline,jobTitle,location,company,websiteUrl,linkedin_url,Custom Column
+John Smith,johnsmith@example.com,+1234567890,Product Owner | Digital Transformation Expert,Product Owner,Netherlands,European Agency,http://johnsmith.eu,https://www.linkedin.com/in/johnsmith,Additional info here
+Jane Doe,jane.doe@startup.io,+9876543210,CEO & Founder | Building AI Solutions,CEO,San Francisco,TechStartup Inc,https://techstartup.io,https://www.linkedin.com/in/janedoe,VIP lead

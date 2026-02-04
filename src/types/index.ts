@@ -17,12 +17,16 @@ export interface Contact {
   last_name: string | null;
   company: string | null;
   job_title: string | null;
+  headline: string | null;
+  phone_number: string | null;
+  website_url: string | null;
   location: string | null;
   linkedin_url: string | null;
   custom_data: string; // JSON string
   email_valid: number; // 0 or 1
   created_at: string;
 }
+
 
 export interface Campaign {
   id: string;
@@ -97,6 +101,9 @@ export interface CreateContactInput {
   last_name?: string;
   company?: string;
   job_title?: string;
+  headline?: string;
+  phone_number?: string;
+  website_url?: string;
   location?: string;
   linkedin_url?: string;
   custom_data?: Record<string, unknown>;
