@@ -88,7 +88,7 @@ export function ImportLeadsModal({ onClose, onSuccess }: ImportLeadsModalProps) 
 
         try {
           // Send in chunks of 500 if needed, but for now just send all
-          const response = await contactsApi.bulkCreate({ contacts: payload });
+          const response = await contactsApi.bulkImport(payload);
           setResults(response as any);
           setStep('result');
         } catch (error) {
