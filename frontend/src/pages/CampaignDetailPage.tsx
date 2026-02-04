@@ -393,7 +393,20 @@ export default function CampaignDetailPage() {
             </thead>
             <tbody className="divide-y divide-gray-100">
               {leads?.length === 0 ? (
-                <tr><td colSpan={6} className="px-6 py-10 text-center text-gray-500">No leads added yet.</td></tr>
+                <tr>
+                  <td colSpan={6} className="px-6 py-16 text-center">
+                    <div className="flex flex-col items-center">
+                      <div className="w-16 h-16 bg-blue-50 rounded-full flex items-center justify-center mb-4">
+                        <UserPlus className="w-8 h-8 text-blue-400" />
+                      </div>
+                      <p className="text-gray-600 font-medium mb-2">No leads in this campaign</p>
+                      <p className="text-gray-400 text-sm mb-4">Add contacts to start your outreach</p>
+                      <Button onClick={() => setShowAddLeads(true)}>
+                        <UserPlus className="w-4 h-4 mr-2" /> Add Leads to Get Started
+                      </Button>
+                    </div>
+                  </td>
+                </tr>
               ) : (
                 leads?.map(lead => (
                   <tr key={lead.id} className={`hover:bg-gray-50 transition-colors ${selectedLeads.includes(lead.id) ? 'bg-blue-50' : ''}`}>
