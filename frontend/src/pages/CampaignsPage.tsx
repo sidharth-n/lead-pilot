@@ -1,18 +1,16 @@
 import { useEffect, useState } from 'react';
-import { Plus, ChevronRight, ChevronLeft, Check, Sparkles, Mail, Clock, User, Info } from 'lucide-react';
+import { Plus, ChevronRight, ChevronLeft, Check, Sparkles, Mail, Clock, User, ChevronDown, ChevronUp } from 'lucide-react';
 import { Link, useNavigate } from 'react-router-dom';
 import { Layout } from '../components/Layout';
 import { Button, Card, StatusBadge } from '../components/ui';
 import { campaignsApi } from '../api';
 
-// Available template variables
+// Available template variables (only useful ones)
 const VARIABLES = [
   { key: 'first_name', label: 'First Name' },
   { key: 'last_name', label: 'Last Name' },
   { key: 'company', label: 'Company' },
   { key: 'job_title', label: 'Job Title' },
-  { key: 'headline', label: 'Headline' },
-  { key: 'email', label: 'Email' },
 ];
 
 const STEPS = [
@@ -22,11 +20,36 @@ const STEPS = [
   { id: 4, name: 'Follow-up', icon: Clock },
 ];
 
+// Variable Chips Component
+const VariableChips = ({ onInsert, color = 'blue' }: { onInsert: (key: string) => void; color?: 'blue' | 'orange' }) => {
+  const colors = {
+    blue: 'bg-blue-50 text-blue-600 hover:bg-blue-100',
+    orange: 'bg-orange-50 text-orange-600 hover:bg-orange-100',
+  };
+  
+  return (
+    <div className="flex flex-wrap gap-2 items-center mt-2">
+      <span className="text-sm text-gray-500">Insert Variables:</span>
+      {VARIABLES.map(v => (
+        <button
+          key={v.key}
+          type="button"
+          onClick={() => onInsert(v.key)}
+          className={`px-3 py-1 text-sm rounded-full transition-colors font-medium ${colors[color]}`}
+        >
+          {v.label}
+        </button>
+      ))}
+    </div>
+  );
+};
+
 export default function CampaignsPage() {
   const [campaigns, setCampaigns] = useState<any[]>([]);
   const [loading, setLoading] = useState(true);
   const [showCreate, setShowCreate] = useState(false);
   const [currentStep, setCurrentStep] = useState(1);
+  const [showAiHelp, setShowAiHelp] = useState(false);
   const navigate = useNavigate();
 
   const [formData, setFormData] = useState({
@@ -36,7 +59,7 @@ export default function CampaignsPage() {
     subject_template: '',
     body_template: '',
     ai_prompt: '',
-    follow_up_delay_minutes: 2,
+    follow_up_delay_minutes: 1,
     follow_up_subject: '',
     follow_up_body: '',
   });
@@ -91,15 +114,16 @@ export default function CampaignsPage() {
       subject_template: '',
       body_template: '',
       ai_prompt: '',
-      follow_up_delay_minutes: 2,
+      follow_up_delay_minutes: 1,
       follow_up_subject: '',
       follow_up_body: '',
     });
     setCurrentStep(1);
     setShowCreate(false);
+    setShowAiHelp(false);
   };
 
-  // Insert variable at end of field
+  // Insert variable helper
   const insertVariable = (field: keyof typeof formData, varKey: string) => {
     const variable = `{{${varKey}}}`;
     setFormData(prev => ({
@@ -222,16 +246,19 @@ export default function CampaignsPage() {
                     <p className="text-gray-500 mt-2">This is the base template for your outreach</p>
                   </div>
 
+                  {/* Subject */}
                   <div>
                     <label className="block text-sm font-medium text-gray-700 mb-2">Subject Line</label>
                     <input
                       className="w-full rounded-xl border-gray-200 shadow-sm focus:border-blue-500 focus:ring-blue-500 px-4 py-3 border"
                       value={formData.subject_template}
                       onChange={e => setFormData({ ...formData, subject_template: e.target.value })}
-                      placeholder="Quick question, {{first_name}}"
+                      placeholder="Quick question about {{company}}"
                     />
+                    <VariableChips onInsert={(key) => insertVariable('subject_template', key)} />
                   </div>
 
+                  {/* Body */}
                   <div>
                     <label className="block text-sm font-medium text-gray-700 mb-2">Email Body</label>
                     <textarea
@@ -241,28 +268,14 @@ export default function CampaignsPage() {
                       onChange={e => setFormData({ ...formData, body_template: e.target.value })}
                       placeholder={`Hi {{first_name}},
 
-I noticed you're at {{company}} and thought you might be interested in what we're building.
+I noticed you're the {{job_title}} at {{company}} and thought you might be interested in what we're building.
 
 Would love to chat for 15 minutes if you have time this week.
 
 Best,
 ${formData.from_name || '[Your Name]'}`}
                     />
-                  </div>
-
-                  {/* Variable Chips */}
-                  <div className="flex flex-wrap gap-2 items-center">
-                    <span className="text-sm text-gray-500">Insert:</span>
-                    {VARIABLES.map(v => (
-                      <button
-                        key={v.key}
-                        type="button"
-                        onClick={() => insertVariable('body_template', v.key)}
-                        className="px-3 py-1.5 text-sm bg-blue-50 text-blue-600 rounded-full hover:bg-blue-100 transition-colors font-medium"
-                      >
-                        {v.label}
-                      </button>
-                    ))}
+                    <VariableChips onInsert={(key) => insertVariable('body_template', key)} />
                   </div>
                 </div>
               )}
@@ -275,26 +288,10 @@ ${formData.from_name || '[Your Name]'}`}
                       <Sparkles className="w-8 h-8 text-purple-600" />
                     </div>
                     <h2 className="text-2xl font-bold text-gray-900">AI Personalization</h2>
-                    <p className="text-gray-500 mt-2">Tell the AI how to make each email unique</p>
+                    <p className="text-gray-500 mt-2">Tell the AI how to customize each email</p>
                   </div>
 
-                  {/* Info Box */}
-                  <div className="bg-gradient-to-r from-purple-50 to-blue-50 border border-purple-100 rounded-xl p-5">
-                    <div className="flex gap-3">
-                      <Info className="w-5 h-5 text-purple-500 flex-shrink-0 mt-0.5" />
-                      <div className="text-sm">
-                        <p className="text-gray-700 mb-2">
-                          <strong>How it works:</strong> Instead of just replacing {"{{first_name}}"} with "John", 
-                          the AI rewrites your entire email based on these instructions + any research gathered.
-                        </p>
-                        <p className="text-gray-600">
-                          After adding leads, you can click <strong>"Research"</strong> to gather company intel, 
-                          then <strong>"Generate AI"</strong> to create personalized versions.
-                        </p>
-                      </div>
-                    </div>
-                  </div>
-
+                  {/* AI Prompt */}
                   <div>
                     <label className="block text-sm font-medium text-gray-700 mb-2">AI Instructions</label>
                     <textarea
@@ -302,15 +299,51 @@ ${formData.from_name || '[Your Name]'}`}
                       className="w-full rounded-xl border-purple-200 shadow-sm focus:border-purple-500 focus:ring-purple-500 px-4 py-3 border"
                       value={formData.ai_prompt}
                       onChange={e => setFormData({ ...formData, ai_prompt: e.target.value })}
-                      placeholder={`Write a personalized cold email for a SaaS product.
-- Keep it friendly and conversational
+                      placeholder={`You are writing a cold email for a SaaS product.
+
+Use the lead's company research to personalize the opening. Mention something specific about their business, recent news, or role.
+
+Keep it:
+- Friendly and conversational
 - Under 100 words
-- Mention something specific about their company
-- End with a soft call-to-action`}
+- End with a soft call-to-action (like asking for a quick chat)`}
                     />
-                    <p className="text-sm text-gray-500 mt-2">
-                      Be specific about tone, length, and what you're offering.
-                    </p>
+                  </div>
+
+                  {/* Collapsible Help */}
+                  <div className="border border-purple-100 rounded-xl overflow-hidden">
+                    <button
+                      type="button"
+                      onClick={() => setShowAiHelp(!showAiHelp)}
+                      className="w-full px-4 py-3 bg-purple-50 flex items-center justify-between text-left hover:bg-purple-100 transition-colors"
+                    >
+                      <span className="text-sm font-medium text-purple-800">💡 What is this? How does AI personalization work?</span>
+                      {showAiHelp ? (
+                        <ChevronUp className="w-4 h-4 text-purple-600" />
+                      ) : (
+                        <ChevronDown className="w-4 h-4 text-purple-600" />
+                      )}
+                    </button>
+                    
+                    {showAiHelp && (
+                      <div className="px-4 py-4 text-sm space-y-3 bg-white">
+                        <p className="text-gray-700">
+                          <strong>This prompt tells the AI how to write personalized emails for your campaign.</strong>
+                        </p>
+                        <p className="text-gray-600">
+                          When you click "Generate AI" on leads, the AI will use these instructions along with 
+                          each lead's data (name, company, job title) and any research gathered about their company 
+                          to write a unique, personalized email.
+                        </p>
+                        <div className="bg-gray-50 rounded-lg p-3 border border-gray-200">
+                          <p className="text-xs text-gray-500 mb-2">Example prompt:</p>
+                          <p className="text-gray-700 text-sm italic">
+                            "Write a friendly cold email for my AI writing tool. Reference something specific 
+                            about their company from the research. Keep it under 80 words. Be genuine, not salesy."
+                          </p>
+                        </div>
+                      </div>
+                    )}
                   </div>
                 </div>
               )}
@@ -326,33 +359,19 @@ ${formData.from_name || '[Your Name]'}`}
                     <p className="text-gray-500 mt-2">Automatic follow-up if no reply</p>
                   </div>
 
-                  <div className="bg-orange-50 border border-orange-100 rounded-xl p-5">
-                    <label className="block text-sm font-medium text-gray-700 mb-3">Wait before sending follow-up</label>
-                    <div className="flex items-center gap-3">
-                      <input
-                        type="number"
-                        min="1"
-                        className="w-24 rounded-xl border-gray-200 shadow-sm focus:border-orange-500 focus:ring-orange-500 px-4 py-3 border text-center text-lg font-semibold"
-                        value={formData.follow_up_delay_minutes}
-                        onChange={e => setFormData({ ...formData, follow_up_delay_minutes: parseInt(e.target.value) || 1 })}
-                      />
-                      <span className="text-gray-600">minutes</span>
-                      <span className="text-sm text-orange-600 bg-orange-100 px-3 py-1 rounded-full">
-                        💡 Use 1-2 min for testing
-                      </span>
-                    </div>
-                  </div>
-
+                  {/* Follow-up Subject */}
                   <div>
                     <label className="block text-sm font-medium text-gray-700 mb-2">Follow-up Subject</label>
                     <input
                       className="w-full rounded-xl border-gray-200 shadow-sm focus:border-orange-500 focus:ring-orange-500 px-4 py-3 border"
                       value={formData.follow_up_subject}
                       onChange={e => setFormData({ ...formData, follow_up_subject: e.target.value })}
-                      placeholder="Re: Quick question, {{first_name}}"
+                      placeholder="Re: Quick question about {{company}}"
                     />
+                    <VariableChips onInsert={(key) => insertVariable('follow_up_subject', key)} color="orange" />
                   </div>
 
+                  {/* Follow-up Body */}
                   <div>
                     <label className="block text-sm font-medium text-gray-700 mb-2">Follow-up Message</label>
                     <textarea
@@ -362,11 +381,32 @@ ${formData.from_name || '[Your Name]'}`}
                       onChange={e => setFormData({ ...formData, follow_up_body: e.target.value })}
                       placeholder={`Hi {{first_name}},
 
-Just wanted to follow up on my previous email. Would love to chat if you have time!
+Just following up on my previous email. I know you're busy at {{company}}, so I'll keep this short.
+
+Would a quick 10-minute call work for you this week?
 
 Best,
 ${formData.from_name || '[Your Name]'}`}
                     />
+                    <VariableChips onInsert={(key) => insertVariable('follow_up_body', key)} color="orange" />
+                  </div>
+
+                  {/* Delay - at bottom */}
+                  <div className="bg-orange-50 border border-orange-100 rounded-xl p-4">
+                    <label className="block text-sm font-medium text-gray-700 mb-3">Wait time before sending</label>
+                    <div className="flex items-center gap-3">
+                      <input
+                        type="number"
+                        min="1"
+                        className="w-20 rounded-xl border-gray-200 shadow-sm focus:border-orange-500 focus:ring-orange-500 px-3 py-2 border text-center text-lg font-semibold"
+                        value={formData.follow_up_delay_minutes}
+                        onChange={e => setFormData({ ...formData, follow_up_delay_minutes: parseInt(e.target.value) || 1 })}
+                      />
+                      <span className="text-gray-600">minutes</span>
+                      <span className="text-sm text-orange-600 bg-orange-100 px-3 py-1 rounded-full ml-2">
+                        💡 Use 1 min for testing
+                      </span>
+                    </div>
                   </div>
                 </div>
               )}
