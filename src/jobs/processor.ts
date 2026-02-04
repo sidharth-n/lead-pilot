@@ -2,9 +2,23 @@
 
 import { v4 as uuid } from 'uuid';
 import { query, queryOne, execute, atomicUpdate } from '../database/connection';
-import { emailService } from '../services/email.service';
+import { MockEmailService } from '../services/email.service';
+import { ResendEmailService } from '../services/resend.service';
 import { aiService } from '../services/ai.service';
-import type { Campaign, CampaignLead } from '../types';
+import { config } from '../config';
+import type { Campaign, CampaignLead, IEmailService } from '../types';
+
+// Email service factory - toggles between real and mock
+function getEmailService(): IEmailService {
+  if (config.email.useReal) {
+    console.log('📧 Using REAL email service (Resend)');
+    return new ResendEmailService();
+  }
+  console.log('📧 Using MOCK email service');
+  return new MockEmailService();
+}
+
+const emailService = getEmailService();
 
 interface CampaignLeadWithContact extends CampaignLead {
   email: string;

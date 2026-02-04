@@ -1,4 +1,5 @@
 // src/index.ts
+import 'dotenv/config'; // Load .env file
 
 import { serve } from '@hono/node-server';
 import { Hono } from 'hono';
