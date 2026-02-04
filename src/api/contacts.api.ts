@@ -175,6 +175,61 @@ contactsApi.post('/bulk', async (c) => {
   }
 });
 
+// DELETE /api/contacts/bulk - Bulk delete contacts (MUST be before /:id route)
+contactsApi.delete('/bulk', async (c) => {
+  try {
+    const body = await c.req.json<{ ids: string[] }>();
+    
+    if (!body.ids || !Array.isArray(body.ids) || body.ids.length === 0) {
+      return c.json(createError('ids array is required', ErrorCodes.VALIDATION_ERROR), 400);
+    }
+    
+    let deleted = 0;
+    let skipped = 0;
+    const errors: string[] = [];
+    
+    for (const id of body.ids) {
+      // Check if contact is in any active campaigns
+      const activeLead = queryOne<{ count: number }>(
+        `SELECT COUNT(*) as count FROM campaign_leads cl
+         JOIN campaigns ca ON cl.campaign_id = ca.id
+         WHERE cl.contact_id = ? AND ca.status = 'active' AND cl.status NOT IN ('completed', 'replied', 'bounced', 'failed')`,
+        [id]
+      );
+      
+      if (activeLead && activeLead.count > 0) {
+        skipped++;
+        errors.push(`Contact ${id} is in active campaigns`);
+        continue;
+      }
+      
+      const result = execute(
+        'DELETE FROM contacts WHERE id = ? AND user_id = ?',
+        [id, TEST_USER_ID]
+      );
+      
+      if (result.changes > 0) {
+        deleted++;
+      } else {
+        skipped++;
+      }
+    }
+    
+    console.log(`🗑️ Bulk deleted ${deleted} contacts, skipped ${skipped}`);
+    
+    return c.json({ 
+      success: true, 
+      deleted, 
+      skipped, 
+      total: body.ids.length,
+      errors: errors.length > 0 ? errors : undefined 
+    });
+  } catch (error) {
+    console.error('Error bulk deleting contacts:', error);
+    return c.json(CommonErrors.internalError(), 500);
+  }
+});
+
 // DELETE /api/contacts/:id - Delete contact
 contactsApi.delete('/:id', (c) => {
   try {
