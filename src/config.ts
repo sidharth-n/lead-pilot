@@ -20,4 +20,8 @@ export const config = {
     openaiApiKey: process.env.OPENAI_API_KEY || '',
     model: process.env.AI_MODEL || 'gpt-4o-mini',
   },
+  perplexity: {
+    apiKey: process.env.PERPLEXITY_API_KEY || '',
+  },
 };
+

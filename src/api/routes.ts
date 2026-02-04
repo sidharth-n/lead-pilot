@@ -4,6 +4,7 @@ import { Hono } from 'hono';
 import { campaignsApi } from './campaigns.api';
 import { contactsApi } from './contacts.api';
 import { generationApi } from './generation.api';
+import { researchApi } from './research.api';
 import { webhooksApi } from './webhooks.api';
 import { processor } from '../jobs/processor';
 
@@ -13,6 +14,7 @@ export const api = new Hono();
 api.route('/campaigns', campaignsApi);
 api.route('/contacts', contactsApi);
 api.route('/generation', generationApi);
+api.route('/research', researchApi);
 api.route('/webhooks', webhooksApi);
 
 // Health check

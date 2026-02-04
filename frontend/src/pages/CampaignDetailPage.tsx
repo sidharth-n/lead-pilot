@@ -1,10 +1,10 @@
 import { useEffect, useState } from 'react';
 import { useParams } from 'react-router-dom';
-import { Play, Pause, UserPlus, Reply, RefreshCw, Eye } from 'lucide-react';
+import { Play, Pause, UserPlus, Reply, RefreshCw, Eye, Search, Sparkles } from 'lucide-react';
 import { Layout } from '../components/Layout';
 import { Button, Card, StatusBadge } from '../components/ui';
 import { PreviewEmailModal } from '../components/PreviewEmailModal';
-import { campaignsApi, contactsApi } from '../api';
+import { campaignsApi, contactsApi, researchApi, generationApi } from '../api';
 import { format } from 'date-fns';
 
 export default function CampaignDetailPage() {
@@ -17,6 +17,11 @@ export default function CampaignDetailPage() {
   const [showAddLeads, setShowAddLeads] = useState(false);
   const [selectedContacts, setSelectedContacts] = useState<string[]>([]);
   const [simulating, setSimulating] = useState<string | null>(null);
+  
+  // Lead Selection State (for research/generate actions)
+  const [selectedLeads, setSelectedLeads] = useState<string[]>([]);
+  const [isResearching, setIsResearching] = useState(false);
+  const [isGenerating, setIsGenerating] = useState(false);
   
   // Preview Modal State
   const [previewLeadId, setPreviewLeadId] = useState<string | null>(null);
@@ -81,7 +86,6 @@ export default function CampaignDetailPage() {
     setSimulating(leadId);
     try {
       await campaignsApi.simulateReply(leadId);
-      // Wait a bit to let the user see the change
       setTimeout(loadData, 500);
     } catch (err: any) {
       alert('Failed: ' + err.message);
@@ -90,17 +94,72 @@ export default function CampaignDetailPage() {
     }
   };
 
-  // Calculate Generation Stats
-  const generationStats = leads ? {
-    total: leads.length,
-    ready: leads.filter(l => l.generation_status === 'ready').length,
-    pending: leads.filter(l => l.generation_status === 'pending' || l.generation_status === 'generating').length,
-    failed: leads.filter(l => l.generation_status === 'failed').length,
-  } : { total: 0, ready: 0, pending: 0, failed: 0 };
+  // Handle Research for selected leads
+  const handleResearchSelected = async () => {
+    if (selectedLeads.length === 0) {
+      alert('Please select at least one lead to research.');
+      return;
+    }
+    setIsResearching(true);
+    try {
+      await researchApi.researchLeads(selectedLeads);
+      setSelectedLeads([]);
+      loadData();
+    } catch (err: any) {
+      alert('Research failed: ' + err.message);
+    } finally {
+      setIsResearching(false);
+    }
+  };
 
-  const progressPercent = generationStats.total > 0 
-    ? Math.round((generationStats.ready / generationStats.total) * 100) 
-    : 0;
+  // Handle AI Generation for selected leads
+  const handleGenerateSelected = async () => {
+    if (selectedLeads.length === 0) {
+      alert('Please select at least one lead to generate AI emails.');
+      return;
+    }
+    setIsGenerating(true);
+    try {
+      await generationApi.bulkGenerate(selectedLeads);
+      setSelectedLeads([]);
+      loadData();
+    } catch (err: any) {
+      alert('Generation failed: ' + err.message);
+    } finally {
+      setIsGenerating(false);
+    }
+  };
+
+  // Toggle lead selection
+  const toggleLeadSelection = (leadId: string) => {
+    if (selectedLeads.includes(leadId)) {
+      setSelectedLeads(selectedLeads.filter(id => id !== leadId));
+    } else {
+      setSelectedLeads([...selectedLeads, leadId]);
+    }
+  };
+
+  // Select/Deselect all leads
+  const toggleSelectAll = () => {
+    if (selectedLeads.length === leads.length) {
+      setSelectedLeads([]);
+    } else {
+      setSelectedLeads(leads.map(l => l.id));
+    }
+  };
+
+  // Calculate stats
+  const researchStats = {
+    researched: leads.filter(l => l.research_status === 'complete').length,
+    researching: leads.filter(l => l.research_status === 'researching').length,
+  };
+
+  const generationStats = {
+    ready: leads.filter(l => l.generation_status === 'ready').length,
+    generating: leads.filter(l => l.generation_status === 'generating').length,
+    template: leads.filter(l => l.generation_status === 'template').length,
+    failed: leads.filter(l => l.generation_status === 'failed').length,
+  };
 
   if (loading || !campaign) {
     return <Layout><div className="text-center py-20">Loading...</div></Layout>;
@@ -136,32 +195,6 @@ export default function CampaignDetailPage() {
           </Button>
         </div>
       </div>
-
-      {/* AI Generation Progress Bar */}
-      {leads.length > 0 && campaign.ai_prompt && (
-        <Card className="mb-8 p-4 bg-indigo-50 border-indigo-100">
-           <div className="flex justify-between items-center mb-2">
-             <div className="flex items-center gap-2">
-               <RefreshCw className={`w-4 h-4 text-indigo-600 ${generationStats.pending > 0 ? 'animate-spin' : ''}`} />
-               <h3 className="font-semibold text-indigo-900">AI Personalization Progress</h3>
-             </div>
-             <span className="text-indigo-700 text-sm font-medium">{generationStats.ready} / {generationStats.total} Emails Ready</span>
-           </div>
-           
-           <div className="w-full bg-indigo-200 rounded-full h-2.5">
-             <div 
-               className="bg-indigo-600 h-2.5 rounded-full transition-all duration-500" 
-               style={{ width: `${progressPercent}%` }}
-             ></div>
-           </div>
-           
-           {generationStats.failed > 0 && (
-             <div className="mt-2 text-xs text-red-600 font-medium">
-               ⚠️ {generationStats.failed} generations failed. Check leads below.
-             </div>
-           )}
-        </Card>
-      )}
 
       {/* Add Leads Modal/Panel */}
       {showAddLeads && (
@@ -223,105 +256,183 @@ export default function CampaignDetailPage() {
         </Card>
       </div>
 
-      {/* Leads List */}
+      {/* Leads List with Selection */}
       <Card>
-        <div className="px-6 py-4 border-b border-gray-200 bg-gray-50 flex items-center justify-between">
-          <h3 className="font-semibold text-gray-900">Campaign Leads</h3>
-          <span className="flex items-center text-xs text-gray-500 gap-1">
-             <RefreshCw className="w-3 h-3 animate-spin" /> Live Updating
-          </span>
+        {/* Header with Actions */}
+        <div className="px-6 py-4 border-b border-gray-200 bg-gray-50">
+          <div className="flex items-center justify-between">
+            <div className="flex items-center gap-4">
+              <h3 className="font-semibold text-gray-900">Campaign Leads</h3>
+              <span className="flex items-center text-xs text-gray-500 gap-1">
+                <RefreshCw className="w-3 h-3 animate-spin" /> Live Updating
+              </span>
+            </div>
+            
+            {/* Bulk Action Buttons */}
+            {leads.length > 0 && (
+              <div className="flex items-center gap-2">
+                <span className="text-sm text-gray-500">
+                  {selectedLeads.length} selected
+                </span>
+                <Button 
+                  size="sm" 
+                  variant="outline"
+                  onClick={handleResearchSelected}
+                  disabled={selectedLeads.length === 0 || isResearching}
+                  className="text-blue-600 border-blue-200 hover:bg-blue-50"
+                >
+                  <Search className={`w-4 h-4 mr-1 ${isResearching ? 'animate-spin' : ''}`} />
+                  {isResearching ? 'Researching...' : '🔍 Research'}
+                </Button>
+                <Button 
+                  size="sm" 
+                  variant="outline"
+                  onClick={handleGenerateSelected}
+                  disabled={selectedLeads.length === 0 || isGenerating}
+                  className="text-purple-600 border-purple-200 hover:bg-purple-50"
+                >
+                  <Sparkles className={`w-4 h-4 mr-1 ${isGenerating ? 'animate-pulse' : ''}`} />
+                  {isGenerating ? 'Generating...' : '🤖 Generate AI'}
+                </Button>
+              </div>
+            )}
+          </div>
+          
+          {/* Progress indicators */}
+          {(researchStats.researching > 0 || generationStats.generating > 0) && (
+            <div className="mt-2 text-xs text-gray-600">
+              {researchStats.researching > 0 && (
+                <span className="mr-4">🔍 Researching: {researchStats.researching}</span>
+              )}
+              {generationStats.generating > 0 && (
+                <span>🤖 Generating: {generationStats.generating}</span>
+              )}
+            </div>
+          )}
         </div>
+
         <div className="overflow-x-auto">
           <table className="w-full text-left text-sm">
             <thead className="bg-white border-b border-gray-200">
               <tr>
+                <th className="px-6 py-3 font-medium text-gray-500">
+                  <input 
+                    type="checkbox" 
+                    checked={leads.length > 0 && selectedLeads.length === leads.length}
+                    onChange={toggleSelectAll}
+                    className="rounded text-blue-600 focus:ring-blue-500"
+                  />
+                </th>
                 <th className="px-6 py-3 font-medium text-gray-500">Contact</th>
+                <th className="px-6 py-3 font-medium text-gray-500">Intel</th>
+                <th className="px-6 py-3 font-medium text-gray-500">Email</th>
                 <th className="px-6 py-3 font-medium text-gray-500">Status</th>
-                <th className="px-6 py-3 font-medium text-gray-500">Generation</th>
-                <th className="px-6 py-3 font-medium text-gray-500">Timeline</th>
                 <th className="px-6 py-3 font-medium text-gray-500 text-right">Actions</th>
               </tr>
             </thead>
             <tbody className="divide-y divide-gray-100">
               {leads?.length === 0 ? (
-                <tr><td colSpan={5} className="px-6 py-10 text-center text-gray-500">No leads added yet.</td></tr>
+                <tr><td colSpan={6} className="px-6 py-10 text-center text-gray-500">No leads added yet.</td></tr>
               ) : (
                 leads?.map(lead => (
-                  <tr key={lead.id} className="hover:bg-gray-50 transition-colors">
+                  <tr key={lead.id} className={`hover:bg-gray-50 transition-colors ${selectedLeads.includes(lead.id) ? 'bg-blue-50' : ''}`}>
+                    {/* Checkbox */}
+                    <td className="px-6 py-4">
+                      <input 
+                        type="checkbox" 
+                        checked={selectedLeads.includes(lead.id)}
+                        onChange={() => toggleLeadSelection(lead.id)}
+                        className="rounded text-blue-600 focus:ring-blue-500"
+                      />
+                    </td>
+                    
+                    {/* Contact */}
                     <td className="px-6 py-4">
                       <div className="font-medium text-gray-900">{lead.first_name || 'Unknown'}</div>
-                      <div className="text-gray-500 text-xs">{lead.email}</div>
+                      <div className="text-gray-500 text-xs">{lead.company || lead.email}</div>
                     </td>
+                    
+                    {/* Intel/Research */}
+                    <td className="px-6 py-4">
+                      {lead.research_status === 'complete' ? (
+                        <div className="max-w-xs">
+                          <span className="inline-flex items-center px-2 py-0.5 rounded text-xs font-medium bg-blue-100 text-blue-800 mb-1">
+                            ✓ Researched
+                          </span>
+                          <div className="text-xs text-gray-600 truncate" title={lead.research_data ? JSON.parse(lead.research_data)?.summary : ''}>
+                            {lead.research_data ? JSON.parse(lead.research_data)?.summary?.slice(0, 50) + '...' : ''}
+                          </div>
+                        </div>
+                      ) : lead.research_status === 'researching' ? (
+                        <span className="inline-flex items-center px-2 py-0.5 rounded text-xs font-medium bg-yellow-100 text-yellow-800">
+                          <RefreshCw className="w-3 h-3 mr-1 animate-spin" /> Researching...
+                        </span>
+                      ) : lead.research_status === 'failed' ? (
+                        <span className="inline-flex items-center px-2 py-0.5 rounded text-xs font-medium bg-red-100 text-red-800">
+                          ✗ Failed
+                        </span>
+                      ) : (
+                        <span className="inline-flex items-center px-2 py-0.5 rounded text-xs font-medium bg-gray-100 text-gray-600">
+                          —
+                        </span>
+                      )}
+                    </td>
+                    
+                    {/* Email/Generation Status */}
+                    <td className="px-6 py-4">
+                      {lead.generation_status === 'ready' ? (
+                        <div>
+                          <span className="inline-flex items-center px-2 py-0.5 rounded text-xs font-medium bg-green-100 text-green-800 mb-1">
+                            ✨ AI Ready
+                          </span>
+                          <div className="text-xs text-gray-600 truncate max-w-xs" title={lead.generated_subject}>
+                            {lead.generated_subject?.slice(0, 40)}...
+                          </div>
+                        </div>
+                      ) : lead.generation_status === 'generating' ? (
+                        <span className="inline-flex items-center px-2 py-0.5 rounded text-xs font-medium bg-purple-100 text-purple-800">
+                          <Sparkles className="w-3 h-3 mr-1 animate-pulse" /> Generating...
+                        </span>
+                      ) : lead.generation_status === 'failed' ? (
+                        <span className="inline-flex items-center px-2 py-0.5 rounded text-xs font-medium bg-red-100 text-red-800">
+                          ✗ Failed
+                        </span>
+                      ) : (
+                        <span className="inline-flex items-center px-2 py-0.5 rounded text-xs font-medium bg-gray-100 text-gray-600">
+                          Template
+                        </span>
+                      )}
+                    </td>
+                    
+                    {/* Status */}
                     <td className="px-6 py-4">
                       <StatusBadge status={lead.status} />
                     </td>
-                    <td className="px-6 py-4">
-                       {/* Generation Status Pill */}
-                       {lead.generation_status === 'ready' ? (
-                         <span className="inline-flex items-center px-2 py-0.5 rounded text-xs font-medium bg-green-100 text-green-800">
-                           Ready
-                         </span>
-                       ) : lead.generation_status === 'failed' ? (
-                         <span className="inline-flex items-center px-2 py-0.5 rounded text-xs font-medium bg-red-100 text-red-800">
-                           Failed
-                         </span>
-                       ) : (
-                         <span className="inline-flex items-center px-2 py-0.5 rounded text-xs font-medium bg-yellow-100 text-yellow-800">
-                           {lead.generation_status || 'Pending'}
-                         </span>
-                       )}
-                    </td>
-                    <td className="px-6 py-4 text-xs text-gray-500 space-y-1">
-                      {lead.email_sent_at && (
-                        <div>Sent: {format(new Date(lead.email_sent_at + 'Z'), 'p')}</div>
-                      )}
-                      {lead.status === 'waiting_follow_up' && lead.follow_up_scheduled_for && (
-                        <div className="text-purple-600 font-medium">
-                          Follow-up: {format(new Date(lead.follow_up_scheduled_for + 'Z'), 'p')}
-                        </div>
-                      )}
-                      {lead.replied_at && (
-                        <div className="text-green-600 font-bold">
-                          Replied: {format(new Date(lead.replied_at + 'Z'), 'p')}
-                        </div>
-                      )}
-                    </td>
-                    <td className="px-6 py-4 text-right flex justify-end gap-2">
-                      {/* PREVIEW BUTTON */}
-                       <Button 
-                        size="sm" 
-                        variant="outline"
-                        onClick={() => setPreviewLeadId(lead.id)}
-                      >
-                        <Eye className="w-3 h-3 mr-1" /> Preview
-                      </Button>
-
-                      {/* SIMULATE REPLY BUTTON */}
-                      {['sent', 'waiting_follow_up'].includes(lead.status) && (
+                    
+                    {/* Actions */}
+                    <td className="px-6 py-4 text-right">
+                      <div className="flex justify-end gap-2">
                         <Button 
                           size="sm" 
-                          variant="outline" 
-                          className="text-green-600 border-green-200 hover:bg-green-50"
-                          onClick={() => handleSimulateReply(lead.id)}
-                          disabled={simulating === lead.id}
+                          variant="outline"
+                          onClick={() => setPreviewLeadId(lead.id)}
                         >
-                          <Reply className="w-3 h-3 mr-1" />
-                          {simulating === lead.id ? 'Marking...' : 'Simulate Reply'}
+                          <Eye className="w-3 h-3 mr-1" /> View
                         </Button>
-                      )}
 
-                        {/* Quick Regenerate */}
-                        {lead.status === 'pending' && lead.generation_status === 'failed' && (
-                            <Button 
-                                size="sm" 
-                                variant="danger" 
-                                className="h-8 w-8 p-0"
-                                onClick={() => setPreviewLeadId(lead.id)}
-                                title="Regenerate"
-                            >
-                                <RefreshCw className="w-4 h-4" />
-                            </Button>
+                        {['sent', 'waiting_follow_up'].includes(lead.status) && (
+                          <Button 
+                            size="sm" 
+                            variant="outline" 
+                            className="text-green-600 border-green-200 hover:bg-green-50"
+                            onClick={() => handleSimulateReply(lead.id)}
+                            disabled={simulating === lead.id}
+                          >
+                            <Reply className="w-3 h-3 mr-1" />
+                            {simulating === lead.id ? '...' : 'Reply'}
+                          </Button>
                         )}
+                      </div>
                     </td>
                   </tr>
                 ))

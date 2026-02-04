@@ -68,11 +68,17 @@ CREATE TABLE IF NOT EXISTS campaign_leads (
   follow_up_scheduled_for TEXT,
   follow_up_sent_at TEXT,
   replied_at TEXT,
+  -- Research fields (Perplexity)
+  research_status TEXT DEFAULT 'not_started' CHECK(research_status IN ('not_started', 'researching', 'complete', 'failed', 'skipped')),
+  research_data TEXT,
+  research_error TEXT,
+  researched_at TEXT,
+  -- Generation fields (OpenAI)
   generated_subject TEXT,
   generated_body TEXT,
   generated_follow_up_subject TEXT,
   generated_follow_up_body TEXT,
-  generation_status TEXT DEFAULT 'pending' CHECK(generation_status IN ('pending', 'generating', 'ready', 'failed', 'skipped')),
+  generation_status TEXT DEFAULT 'template' CHECK(generation_status IN ('template', 'generating', 'ready', 'failed')),
   last_error TEXT,
   retry_count INTEGER DEFAULT 0,
   created_at TEXT DEFAULT (datetime('now')),

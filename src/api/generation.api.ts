@@ -78,7 +78,7 @@ generationApi.post('/lead/:leadId/regenerate', async (c) => {
   // Reset status to pending so the background job picks it up
   execute(
     `UPDATE campaign_leads SET 
-       generation_status = 'pending',
+       generation_status = 'generating',
        generated_body = NULL,
        updated_at = datetime('now')
      WHERE id = ?`,
@@ -86,4 +86,34 @@ generationApi.post('/lead/:leadId/regenerate', async (c) => {
   );
 
   return c.json({ success: true, message: 'Queued for regeneration' });
+});
+
+// Bulk generate AI emails for selected leads
+generationApi.post('/bulk', async (c) => {
+  try {
+    const body = await c.req.json<{ lead_ids: string[] }>();
+    
+    if (!body.lead_ids || body.lead_ids.length === 0) {
+      return c.json({ error: 'No lead IDs provided' }, 400);
+    }
+
+    // Mark leads as generating
+    const placeholders = body.lead_ids.map(() => '?').join(',');
+    execute(
+      `UPDATE campaign_leads 
+       SET generation_status = 'generating', updated_at = datetime('now')
+       WHERE id IN (${placeholders}) AND generation_status IN ('template', 'failed')`,
+      body.lead_ids
+    );
+
+    return c.json({ 
+      success: true, 
+      message: `AI generation started for ${body.lead_ids.length} leads`,
+      queued: body.lead_ids.length
+    });
+
+  } catch (error: any) {
+    console.error('Error starting bulk generation:', error);
+    return c.json({ error: error.message || 'Failed to start generation' }, 500);
+  }
 });

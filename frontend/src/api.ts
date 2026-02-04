@@ -47,4 +47,13 @@ export const generationApi = {
   getLead: (leadId: string) => api<{ lead: any }>(`/generation/lead/${leadId}`),
   update: (leadId: string, data: any) => api(`/generation/lead/${leadId}`, { method: 'PUT', body: JSON.stringify(data) }),
   regenerate: (leadId: string) => api(`/generation/lead/${leadId}/regenerate`, { method: 'POST' }),
+  // Bulk generate for selected leads
+  bulkGenerate: (leadIds: string[]) => api(`/generation/bulk`, { method: 'POST', body: JSON.stringify({ lead_ids: leadIds }) }),
+};
+
+export const researchApi = {
+  // Research selected leads
+  researchLeads: (leadIds: string[]) => api(`/research/leads`, { method: 'POST', body: JSON.stringify({ lead_ids: leadIds }) }),
+  // Get research for a single lead
+  getLead: (leadId: string) => api<{ research_status: string; research_data: any }>(`/research/leads/${leadId}`),
 };

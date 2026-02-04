@@ -73,7 +73,7 @@ export class EmailGenerator {
   }
 
   private async processPendingLeads(): Promise<void> {
-    // Find leads needing generation
+    // Find leads needing generation (status = 'generating' means user triggered it)
     const leads = query<CampaignLeadWithDetails>(
       `SELECT cl.*, 
               c.email, c.first_name, c.last_name, c.company, c.job_title, c.headline, c.custom_data,
@@ -82,7 +82,7 @@ export class EmailGenerator {
        FROM campaign_leads cl
        JOIN contacts c ON cl.contact_id = c.id
        JOIN campaigns ca ON cl.campaign_id = ca.id
-       WHERE cl.generation_status = 'pending'
+       WHERE cl.generation_status = 'generating'
          AND ca.status IN ('draft', 'active') 
        LIMIT ?`,
       [this.config.batchSize]
@@ -94,15 +94,6 @@ export class EmailGenerator {
   }
 
   private async generateForLead(lead: CampaignLeadWithDetails): Promise<void> {
-    // 1. Atomic claim
-    const claimed = atomicUpdate(
-      'campaign_leads',
-      { generation_status: 'generating' },
-      { id: lead.id, generation_status: 'pending' }
-    );
-
-    if (!claimed) return;
-
     try {
       console.log(`🤖 Generating emails for ${lead.email}...`);
 
@@ -119,22 +110,32 @@ export class EmailGenerator {
       let generatedSubject = lead.subject_template;
       let generatedBody = lead.body_template;
 
-      if (lead.ai_prompt) {
-        // AI Generation
-        const result = await aiService.generateEmail({
-          system_prompt: lead.ai_prompt,
-          contact_data: contactData,
-          template: lead.body_template,
-        });
-
-        if (result.success && result.content) {
-          generatedBody = result.content;
-        } else {
-          throw new Error(result.error || 'Failed to generate initial email');
+      // Build enhanced prompt with research data if available
+      let enhancedPrompt = lead.ai_prompt || 'Write a personalized cold email.';
+      
+      // Add research intel if available
+      if (lead.research_data) {
+        try {
+          const research = JSON.parse(lead.research_data);
+          if (research.summary) {
+            enhancedPrompt += `\n\nRecent company intel:\n${research.summary}`;
+          }
+        } catch (e) {
+          // Ignore parse errors
         }
+      }
+
+      // AI Generation
+      const result = await aiService.generateEmail({
+        system_prompt: enhancedPrompt,
+        contact_data: contactData,
+        template: lead.body_template,
+      });
+
+      if (result.success && result.content) {
+        generatedBody = result.content;
       } else {
-        // Template Replacement
-        generatedBody = this.replaceTemplateVars(generatedBody, lead);
+        throw new Error(result.error || 'Failed to generate initial email');
       }
       
       // Always replace vars in subject

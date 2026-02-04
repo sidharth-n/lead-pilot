@@ -60,11 +60,17 @@ export interface CampaignLead {
   follow_up_scheduled_for: string | null;
   follow_up_sent_at: string | null;
   replied_at: string | null;
+  // Research fields (Perplexity)
+  research_status: 'not_started' | 'researching' | 'complete' | 'failed' | 'skipped';
+  research_data: string | null; // JSON string
+  research_error: string | null;
+  researched_at: string | null;
+  // Generation fields (OpenAI)
   generated_subject: string | null;
   generated_body: string | null;
   generated_follow_up_subject: string | null;
   generated_follow_up_body: string | null;
-  generation_status: 'pending' | 'generating' | 'ready' | 'failed' | 'skipped';
+  generation_status: 'template' | 'generating' | 'ready' | 'failed';
   last_error: string | null;
   retry_count: number;
   created_at: string;
