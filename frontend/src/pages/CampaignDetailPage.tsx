@@ -214,16 +214,16 @@ export default function CampaignDetailPage() {
                     </td>
                     <td className="px-6 py-4 text-xs text-gray-500 space-y-1">
                       {lead.email_sent_at && (
-                        <div>Sent: {format(new Date(lead.email_sent_at), 'p')}</div>
+                        <div>Sent: {format(new Date(lead.email_sent_at + 'Z'), 'p')}</div>
                       )}
                       {lead.status === 'waiting_follow_up' && lead.follow_up_scheduled_for && (
                         <div className="text-purple-600 font-medium">
-                          Follow-up: {format(new Date(lead.follow_up_scheduled_for), 'p')}
+                          Follow-up: {format(new Date(lead.follow_up_scheduled_for + 'Z'), 'p')}
                         </div>
                       )}
                       {lead.replied_at && (
                         <div className="text-green-600 font-bold">
-                          Replied: {format(new Date(lead.replied_at), 'p')}
+                          Replied: {format(new Date(lead.replied_at + 'Z'), 'p')}
                         </div>
                       )}
                     </td>
