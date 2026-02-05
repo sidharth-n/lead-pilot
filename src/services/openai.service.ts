@@ -16,36 +16,52 @@ export class OpenAIService implements IAIService {
   async generateEmail(request: AIGenerateRequest): Promise<AIGenerateResult> {
     const { system_prompt, contact_data, template } = request;
 
-    // Build the user prompt with contact data
-    const contactInfo = `
-Contact Information:
-- Email: ${contact_data.email}
-- First Name: ${contact_data.first_name || 'Unknown'}
-- Last Name: ${contact_data.last_name || 'Unknown'}
-- Company: ${contact_data.company || 'Unknown'}
-- Job Title: ${contact_data.job_title || 'Unknown'}
-`;
+    // Build comprehensive contact context
+    const contactContext = [
+      contact_data.first_name ? `First Name: ${contact_data.first_name}` : null,
+      contact_data.last_name ? `Last Name: ${contact_data.last_name}` : null,
+      contact_data.email ? `Email: ${contact_data.email}` : null,
+      contact_data.company ? `Company: ${contact_data.company}` : null,
+      contact_data.job_title ? `Job Title: ${contact_data.job_title}` : null,
+      contact_data.headline ? `Headline: ${contact_data.headline}` : null,
+    ].filter(Boolean).join('\n');
 
-    const userPrompt = `
-${contactInfo}
+    // Extract any research intel from system prompt
+    const hasResearchData = system_prompt?.includes('company intel') || system_prompt?.includes('Recent');
 
-Email Template/Instructions:
+    // Build a comprehensive prompt for email generation
+    const systemMessage = `You are an expert cold email copywriter. Your task is to write a personalized, engaging cold email that feels human and genuine, not like a template.
+
+IMPORTANT GUIDELINES:
+1. Write a COMPLETE email body (3-5 sentences)
+2. Personalize based on the contact's company, role, and any research provided
+3. Be conversational and genuine, not salesy or pushy
+4. Reference something specific about their company if research is provided
+5. Include a clear but soft call-to-action
+6. Keep it short and respect their time
+7. Do NOT include subject line, just the email body
+8. Do NOT include signature or sign-off
+
+${system_prompt ? `USER'S INSTRUCTIONS:\n${system_prompt}` : ''}`;
+
+    const userMessage = `CONTACT INFORMATION:
+${contactContext}
+
+${hasResearchData ? '' : `TEMPLATE FOR REFERENCE (use as inspiration, don't just copy):
 ${template}
-
-Generate a personalized email based on the template and contact information above.
-Return ONLY the email body content, no subject line, no explanations.
-`;
+`}
+Write a personalized cold email for this contact. The email should feel personal and reference their company or role. Output ONLY the email body text, nothing else.`;
 
     try {
-      console.log(`🤖 [OpenAI] Generating email for: ${contact_data.email}`);
+      console.log(`🤖 [OpenAI] Generating personalized email for: ${contact_data.email}`);
 
       const response = await this.client.chat.completions.create({
         model: config.ai.model,
         messages: [
-          { role: 'system', content: system_prompt || 'You are a professional email writer. Write personalized, engaging emails.' },
-          { role: 'user', content: userPrompt },
+          { role: 'system', content: systemMessage },
+          { role: 'user', content: userMessage },
         ],
-        temperature: 0.7,
+        temperature: 0.8,
         max_tokens: 500,
       });
 
@@ -68,6 +84,16 @@ Return ONLY the email body content, no subject line, no explanations.
       };
     } catch (error: any) {
       console.error(`❌ [OpenAI] Error:`, error.message);
+      
+      // Handle rate limits specially
+      if (error.status === 429) {
+        return {
+          success: false,
+          content: null,
+          error: 'Rate limited - will retry',
+        };
+      }
+      
       return {
         success: false,
         content: null,

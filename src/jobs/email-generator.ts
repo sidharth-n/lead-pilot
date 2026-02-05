@@ -33,18 +33,20 @@ export class EmailGenerator {
   private isRunning = false;
   private intervalId: ReturnType<typeof setInterval> | null = null;
   private config: GeneratorConfig;
+  private readonly MAX_RETRIES = 3;
+  private readonly RETRY_DELAY_MS = 2000;
 
   constructor(config: Partial<GeneratorConfig> = {}) {
     this.config = {
-      batchSize: config.batchSize || 5, // Lower batch size for AI generation (rate limits)
-      intervalMs: config.intervalMs || 5000, // Check every 5 seconds
+      batchSize: config.batchSize || 3, // Lower batch size for AI rate limits
+      intervalMs: config.intervalMs || 5000,
     };
   }
 
   start(): void {
     if (this.intervalId) return;
 
-    console.log(`🤖 Generator starting (interval: ${this.config.intervalMs}ms)`);
+    console.log(`🤖 Generator starting (batch: ${this.config.batchSize}, interval: ${this.config.intervalMs}ms)`);
 
     // Run immediately, then on interval
     this.generateAll();
@@ -88,14 +90,28 @@ export class EmailGenerator {
       [this.config.batchSize]
     );
 
-    for (const lead of leads) {
-      await this.generateForLead(lead);
+    if (leads.length > 0) {
+      console.log(`\n📧 Found ${leads.length} leads needing generation`);
+    }
+
+    for (let i = 0; i < leads.length; i++) {
+      await this.generateForLead(leads[i]);
+      
+      // Add delay between leads to avoid rate limiting (except for last one)
+      if (i < leads.length - 1) {
+        await this.delay(1000);
+      }
     }
   }
 
+  private delay(ms: number): Promise<void> {
+    return new Promise(resolve => setTimeout(resolve, ms));
+  }
+
+
   private async generateForLead(lead: CampaignLeadWithDetails): Promise<void> {
     try {
-      console.log(`🤖 Generating emails for ${lead.email}...`);
+      console.log(`\n🤖 ========== Generating emails for ${lead.email} ==========`);
 
       const contactData = {
         email: lead.email,
@@ -125,17 +141,43 @@ export class EmailGenerator {
         }
       }
 
-      // AI Generation
-      const result = await aiService.generateEmail({
-        system_prompt: enhancedPrompt,
-        contact_data: contactData,
-        template: lead.body_template,
-      });
+      // AI Generation with retry logic
+      console.log('📝 Calling AI service...');
+      console.log('📝 Prompt preview:', enhancedPrompt.slice(0, 150) + '...');
+      
+      let result = null;
+      let retryCount = 0;
+      
+      while (retryCount <= this.MAX_RETRIES) {
+        result = await aiService.generateEmail({
+          system_prompt: enhancedPrompt,
+          contact_data: contactData,
+          template: lead.body_template,
+        });
 
-      if (result.success && result.content) {
+        if (result.success && result.content) {
+          break; // Success!
+        }
+        
+        // Check if we should retry (rate limit or transient error)
+        if (result.error?.includes('Rate limited') || result.error?.includes('429')) {
+          retryCount++;
+          const delayMs = this.RETRY_DELAY_MS * Math.pow(2, retryCount - 1); // Exponential backoff
+          console.log(`⏳ Rate limited, retrying in ${delayMs}ms (attempt ${retryCount}/${this.MAX_RETRIES})...`);
+          await this.delay(delayMs);
+        } else {
+          // Non-retryable error
+          break;
+        }
+      }
+
+      console.log('📝 AI Result:', { success: result?.success, contentLength: result?.content?.length, error: result?.error });
+
+      if (result?.success && result?.content) {
         generatedBody = result.content;
+        console.log('✅ Using AI-generated body:', generatedBody.slice(0, 100) + '...');
       } else {
-        throw new Error(result.error || 'Failed to generate initial email');
+        throw new Error(result?.error || 'Failed to generate initial email');
       }
       
       // Always replace vars in subject
