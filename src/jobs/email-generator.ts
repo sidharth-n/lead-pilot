@@ -234,14 +234,28 @@ export class EmailGenerator {
       if (lead.follow_up_enabled) {
         // Build follow-up prompt with context of initial email
         const followUpPrompt = lead.follow_up_ai_prompt 
-          ? `${lead.follow_up_ai_prompt}\n\nContext: This is a follow-up to an initial email that was already sent.`
-          : 'Write a gentle follow-up email. Keep it short, friendly, and reference that you reached out before.';
+          ? `${lead.follow_up_ai_prompt}
+
+RULES:
+- This is a follow-up to an initial email already sent
+- Keep it SHORT (2-3 sentences max)
+- Use \\n\\n for paragraph breaks
+- Sound genuinely curious, not pushy
+- End with: "Best,\\n\\n[FirstName]"
+- AVOID spam words: "opportunity", "boost", "exciting", "limited", "urgent"`
+          : `Write a SHORT follow-up email. RULES:
+- 2-3 sentences only
+- Mention you reached out before
+- Separate lines with \\n\\n
+- Be casual and friendly
+- End with: "Best,\\n\\n[FirstName]"
+- AVOID: "opportunity", "boost", "exciting", "just checking in"`;
         
         // AI Generation for Follow-up 
         const followUpResult = await aiService.generateEmail({
           system_prompt: followUpPrompt,
           contact_data: contactData,
-          template: lead.follow_up_body || 'Just following up on my previous email...',
+          template: lead.follow_up_body || 'Following up on my last note...',
         });
 
         if (followUpResult.success && followUpResult.content) {

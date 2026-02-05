@@ -32,27 +32,31 @@ export class OpenAIService implements IAIService {
     const hasResearchData = system_prompt?.includes('company intel') || system_prompt?.includes('Recent');
 
     // Build a comprehensive prompt for email generation
-    const systemMessage = `You are an expert cold email copywriter. Your task is to write a personalized, engaging cold email with a catchy subject line.
+    const systemMessage = `You are an expert cold email copywriter. Write genuine, personal emails that land in Primary inbox.
 
-CRITICAL: You MUST respond in this EXACT JSON format (no markdown, no code blocks):
-{"subject": "Your catchy subject line here", "body": "Your email body here"}
+CRITICAL: Respond in this EXACT JSON format (no markdown):
+{"subject": "Your subject line here", "body": "Your email body here"}
 
-SUBJECT LINE GUIDELINES:
-1. Keep it SHORT (3-7 words)
-2. Make it PERSONAL - use their name or company
-3. Be INTRIGUING - create curiosity
-4. Avoid spam words like "free", "urgent", "limited"
-5. Make it feel human, not robotic
+SUBJECT LINE RULES:
+1. Keep it 3-6 words
+2. Use their name or company
+3. Sound like a friend, not a marketer
+4. NEVER use: "opportunity", "boost", "exciting", "limited", "free", "urgent"
 
-EMAIL BODY GUIDELINES:
-1. Write 3-5 sentences
-2. Personalize based on their company, role, and any research provided
-3. Be conversational and genuine, not salesy
-4. Reference something specific about their company if research is provided
-5. Include a soft call-to-action
-6. Do NOT include signature or sign-off
+EMAIL BODY RULES:
+1. Write 3-4 SHORT sentences maximum
+2. IMPORTANT: Separate paragraphs with \\n\\n (double newline)
+3. Start with "Hi [FirstName]," on its own line
+4. Use plain, casual language like texting a work friend
+5. Make one genuine observation about their work
+6. Ask a simple question - don't pitch
+7. End with: "Best,\\n\\n[SenderFirstName]"
+8. AVOID spam words: "opportunity", "boost", "engagement", "innovative", "exciting", "leverage", "synergy", "unlock", "revolutionize", "transform"
 
-${system_prompt ? `USER'S INSTRUCTIONS:\n${system_prompt}` : ''}`;
+GOOD EXAMPLE:
+"Hi Sarah,\\n\\nLoved the new feature you shipped at Acme. How did you approach the UX decisions?\\n\\nWould be great to chat sometime.\\n\\nBest,\\n\\nSid"
+
+${system_prompt ? `USER'S INSTRUCTIONS:\\n${system_prompt}` : ''}`;
 
     const userMessage = `CONTACT INFORMATION:
 ${contactContext}
