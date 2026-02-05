@@ -12,7 +12,16 @@ const app = new Hono();
 
 // Middleware
 app.use('*', logger());
-app.use('*', cors());
+app.use('*', cors({
+  origin: [
+    'http://localhost:5173', // Local dev
+    'https://lead-pilot-nu.vercel.app', // Production frontend
+    'https://leadpilot.vercel.app', // Alternative domain
+  ],
+  allowMethods: ['GET', 'POST', 'PUT', 'PATCH', 'DELETE', 'OPTIONS'],
+  allowHeaders: ['Content-Type', 'Authorization', 'X-User-Session'],
+  credentials: true,
+}));
 
 // Mount API Routes
 app.route('/api', api);
