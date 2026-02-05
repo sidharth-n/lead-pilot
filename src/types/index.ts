@@ -166,6 +166,7 @@ export interface AIGenerateRequest {
 
 export interface AIGenerateResult {
   success: boolean;
+  subject: string | null;
   content: string | null;
   error: string | null;
 }

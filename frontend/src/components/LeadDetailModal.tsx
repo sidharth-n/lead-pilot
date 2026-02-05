@@ -1,7 +1,7 @@
 // frontend/src/components/LeadDetailModal.tsx
 
 import { useState, useEffect, useRef } from 'react';
-import { X, RefreshCw, Save, Sparkles, AlertCircle, Mail, Building, Briefcase, Linkedin, ExternalLink, Copy, Check } from 'lucide-react';
+import { X, RefreshCw, Save, Sparkles, AlertCircle, Mail, Building, Briefcase, Linkedin, ExternalLink, Copy, Check, Send, MessageSquare } from 'lucide-react';
 import { Button, Card } from './ui';
 import { generationApi } from '../api';
 
@@ -24,6 +24,7 @@ export function LeadDetailModal({ leadId, lead, campaign, onClose, onSave }: Lea
   const [editedFollowUpBody, setEditedFollowUpBody] = useState('');
   const [editedFollowUpSubject, setEditedFollowUpSubject] = useState('');
   const [activeTab, setActiveTab] = useState<'default' | 'ai'>('default');
+  const [emailType, setEmailType] = useState<'initial' | 'followup'>('initial');
   const [copiedField, setCopiedField] = useState<string | null>(null);
   const [showFullResearch, setShowFullResearch] = useState(false);
   
@@ -284,10 +285,28 @@ export function LeadDetailModal({ leadId, lead, campaign, onClose, onSave }: Lea
 
           {/* Main Content - Email Editor */}
           <div className="flex-1 flex flex-col bg-white">
+            {/* Email Type Toggle (Initial / Follow-up) */}
+            <div className="flex border-b bg-gray-50">
+              <button 
+                className={`flex-1 py-3 px-4 text-sm font-medium flex items-center justify-center gap-2 transition-colors ${emailType === 'initial' ? 'bg-white border-b-2 border-blue-600 text-blue-600' : 'text-gray-500 hover:text-gray-700'}`}
+                onClick={() => setEmailType('initial')}
+              >
+                <Send className="w-4 h-4" />
+                Initial Email
+              </button>
+              <button 
+                className={`flex-1 py-3 px-4 text-sm font-medium flex items-center justify-center gap-2 transition-colors ${emailType === 'followup' ? 'bg-white border-b-2 border-purple-600 text-purple-600' : 'text-gray-500 hover:text-gray-700'}`}
+                onClick={() => setEmailType('followup')}
+              >
+                <MessageSquare className="w-4 h-4" />
+                Follow-up
+              </button>
+            </div>
+
             {/* Tabs: Default / AI */}
             <div className="flex border-b px-6 pt-4">
               <button 
-                className={`pb-3 px-4 text-sm font-medium border-b-2 transition-colors mr-2 ${activeTab === 'default' ? 'border-blue-600 text-blue-600' : 'border-transparent text-gray-500 hover:text-gray-700'}`}
+                className={`pb-3 px-4 text-sm font-medium border-b-2 transition-colors mr-2 ${activeTab === 'default' ? 'border-gray-600 text-gray-800' : 'border-transparent text-gray-500 hover:text-gray-700'}`}
                 onClick={() => setActiveTab('default')}
               >
                 Default Template
@@ -315,18 +334,24 @@ export function LeadDetailModal({ leadId, lead, campaign, onClose, onSave }: Lea
                 // Default Template Tab
                 <div className="space-y-4 max-w-2xl">
                   <div className="bg-blue-50 border border-blue-200 rounded-lg p-3 text-sm text-blue-700 mb-4">
-                    This is the campaign template with your contact's details filled in. Generate AI content for personalized messaging.
+                    {emailType === 'initial' 
+                      ? 'This is your campaign template with contact details filled in.'
+                      : 'This is your follow-up template. Follow-ups are sent if no reply is received.'}
                   </div>
                   <div>
                     <label className="block text-xs font-medium text-gray-500 uppercase tracking-wide mb-1">Subject</label>
                     <div className="w-full p-2.5 border border-gray-200 rounded-lg bg-gray-50 text-gray-900">
-                      {getTemplateSubject() || <span className="text-gray-400">No subject template</span>}
+                      {emailType === 'initial' 
+                        ? (getTemplateSubject() || <span className="text-gray-400">No subject template</span>)
+                        : (getTemplateFollowUpSubject() || <span className="text-gray-400">Re: {getTemplateSubject()}</span>)}
                     </div>
                   </div>
                   <div>
                     <label className="block text-xs font-medium text-gray-500 uppercase tracking-wide mb-1">Body</label>
                     <div className="w-full p-4 border border-gray-200 rounded-lg bg-gray-50 text-gray-800 min-h-[200px] whitespace-pre-wrap">
-                      {getTemplateBody() || <span className="text-gray-400">No body template</span>}
+                      {emailType === 'initial'
+                        ? (getTemplateBody() || <span className="text-gray-400">No body template</span>)
+                        : (getTemplateFollowUpBody() || <span className="text-gray-400">No follow-up template configured</span>)}
                     </div>
                   </div>
                   
@@ -352,7 +377,8 @@ export function LeadDetailModal({ leadId, lead, campaign, onClose, onSave }: Lea
                         Generate AI Content
                       </Button>
                     </div>
-                  ) : (
+                  ) : emailType === 'initial' ? (
+                    // Initial Email - AI
                     <>
                       <div>
                         <label className="block text-xs font-medium text-gray-500 uppercase tracking-wide mb-1">Subject</label>
@@ -390,6 +416,41 @@ export function LeadDetailModal({ leadId, lead, campaign, onClose, onSave }: Lea
                             {data.last_error}
                           </div>
                         )}
+                      </div>
+                    </>
+                  ) : (
+                    // Follow-up Email - AI
+                    <>
+                      <div>
+                        <label className="block text-xs font-medium text-gray-500 uppercase tracking-wide mb-1">Follow-up Subject</label>
+                        <input
+                          type="text"
+                          className="w-full p-2.5 border border-gray-300 rounded-lg focus:ring-2 focus:ring-purple-500 focus:border-purple-500 transition-all font-medium text-gray-900"
+                          value={editedFollowUpSubject}
+                          onChange={e => setEditedFollowUpSubject(e.target.value)}
+                          placeholder="Follow-up Subject"
+                        />
+                      </div>
+                      <div>
+                        <label className="block text-xs font-medium text-gray-500 uppercase tracking-wide mb-1">Follow-up Body</label>
+                        <textarea
+                          className="w-full p-4 border border-gray-300 rounded-lg h-64 font-sans text-base leading-relaxed text-gray-800 focus:ring-2 focus:ring-purple-500 focus:border-purple-500 transition-all resize-none"
+                          value={editedFollowUpBody}
+                          onChange={e => setEditedFollowUpBody(e.target.value)}
+                          placeholder="Follow-up email body..."
+                        />
+                      </div>
+                      
+                      <div className="flex items-center gap-2 pt-2">
+                        <Button 
+                          variant="outline" 
+                          size="sm"
+                          onClick={handleRegenerate}
+                          disabled={regenerating}
+                        >
+                          <RefreshCw className={`w-4 h-4 mr-1 ${regenerating ? 'animate-spin' : ''}`} />
+                          Regenerate All
+                        </Button>
                       </div>
                     </>
                   )}

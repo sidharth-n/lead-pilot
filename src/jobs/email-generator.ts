@@ -171,17 +171,21 @@ export class EmailGenerator {
         }
       }
 
-      console.log('📝 AI Result:', { success: result?.success, contentLength: result?.content?.length, error: result?.error });
+      console.log('📝 AI Result:', { success: result?.success, subject: result?.subject, contentLength: result?.content?.length, error: result?.error });
 
       if (result?.success && result?.content) {
         generatedBody = result.content;
+        // Use AI-generated subject if available, otherwise fall back to template replacement
+        if (result.subject) {
+          generatedSubject = result.subject;
+          console.log('✅ Using AI subject:', generatedSubject);
+        } else {
+          generatedSubject = this.replaceTemplateVars(generatedSubject, lead);
+        }
         console.log('✅ Using AI-generated body:', generatedBody.slice(0, 100) + '...');
       } else {
         throw new Error(result?.error || 'Failed to generate initial email');
       }
-      
-      // Always replace vars in subject
-      generatedSubject = this.replaceTemplateVars(generatedSubject, lead);
 
 
       // 3. Generate Follow-up (if enabled)
@@ -189,25 +193,35 @@ export class EmailGenerator {
       let generatedFollowUpBody = lead.follow_up_body;
 
       if (lead.follow_up_enabled) {
-        if (lead.follow_up_ai_prompt) {
-           // AI Generation for Follow-up (Context: previously sent email)
-           const result = await aiService.generateEmail({
-            system_prompt: lead.follow_up_ai_prompt,
-            contact_data: contactData,
-            template: lead.follow_up_body || 'Just following up...',
-          });
-  
-          if (result.success && result.content) {
-            generatedFollowUpBody = result.content;
+        // Build follow-up prompt with context of initial email
+        const followUpPrompt = lead.follow_up_ai_prompt 
+          ? `${lead.follow_up_ai_prompt}\n\nContext: This is a follow-up to an initial email that was already sent.`
+          : 'Write a gentle follow-up email. Keep it short, friendly, and reference that you reached out before.';
+        
+        // AI Generation for Follow-up 
+        const followUpResult = await aiService.generateEmail({
+          system_prompt: followUpPrompt,
+          contact_data: contactData,
+          template: lead.follow_up_body || 'Just following up on my previous email...',
+        });
+
+        if (followUpResult.success && followUpResult.content) {
+          generatedFollowUpBody = followUpResult.content;
+          if (followUpResult.subject) {
+            generatedFollowUpSubject = followUpResult.subject;
+          } else if (generatedFollowUpSubject) {
+            generatedFollowUpSubject = this.replaceTemplateVars(generatedFollowUpSubject, lead);
           }
         } else if (generatedFollowUpBody) {
-          // Template Replacement
+          // Fall back to template replacement if AI fails
           generatedFollowUpBody = this.replaceTemplateVars(generatedFollowUpBody, lead);
+          if (generatedFollowUpSubject) {
+            generatedFollowUpSubject = this.replaceTemplateVars(generatedFollowUpSubject, lead);
+          }
         }
 
-        if (generatedFollowUpSubject) {
-           generatedFollowUpSubject = this.replaceTemplateVars(generatedFollowUpSubject, lead);
-        } else {
+        // Default follow-up subject if still empty
+        if (!generatedFollowUpSubject) {
            generatedFollowUpSubject = `Re: ${generatedSubject}`;
         }
       }

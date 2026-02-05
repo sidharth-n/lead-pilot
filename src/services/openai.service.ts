@@ -30,27 +30,35 @@ export class OpenAIService implements IAIService {
     const hasResearchData = system_prompt?.includes('company intel') || system_prompt?.includes('Recent');
 
     // Build a comprehensive prompt for email generation
-    const systemMessage = `You are an expert cold email copywriter. Your task is to write a personalized, engaging cold email that feels human and genuine, not like a template.
+    const systemMessage = `You are an expert cold email copywriter. Your task is to write a personalized, engaging cold email with a catchy subject line.
 
-IMPORTANT GUIDELINES:
-1. Write a COMPLETE email body (3-5 sentences)
-2. Personalize based on the contact's company, role, and any research provided
-3. Be conversational and genuine, not salesy or pushy
+CRITICAL: You MUST respond in this EXACT JSON format (no markdown, no code blocks):
+{"subject": "Your catchy subject line here", "body": "Your email body here"}
+
+SUBJECT LINE GUIDELINES:
+1. Keep it SHORT (3-7 words)
+2. Make it PERSONAL - use their name or company
+3. Be INTRIGUING - create curiosity
+4. Avoid spam words like "free", "urgent", "limited"
+5. Make it feel human, not robotic
+
+EMAIL BODY GUIDELINES:
+1. Write 3-5 sentences
+2. Personalize based on their company, role, and any research provided
+3. Be conversational and genuine, not salesy
 4. Reference something specific about their company if research is provided
-5. Include a clear but soft call-to-action
-6. Keep it short and respect their time
-7. Do NOT include subject line, just the email body
-8. Do NOT include signature or sign-off
+5. Include a soft call-to-action
+6. Do NOT include signature or sign-off
 
 ${system_prompt ? `USER'S INSTRUCTIONS:\n${system_prompt}` : ''}`;
 
     const userMessage = `CONTACT INFORMATION:
 ${contactContext}
 
-${hasResearchData ? '' : `TEMPLATE FOR REFERENCE (use as inspiration, don't just copy):
+${hasResearchData ? '' : `TEMPLATE FOR REFERENCE (use as inspiration):
 ${template}
 `}
-Write a personalized cold email for this contact. The email should feel personal and reference their company or role. Output ONLY the email body text, nothing else.`;
+Write a personalized cold email with subject line. Respond ONLY with valid JSON in this format: {"subject": "...", "body": "..."}`;
 
     try {
       console.log(`🤖 [OpenAI] Generating personalized email for: ${contact_data.email}`);
@@ -62,26 +70,48 @@ Write a personalized cold email for this contact. The email should feel personal
           { role: 'user', content: userMessage },
         ],
         temperature: 0.8,
-        max_tokens: 500,
+        max_tokens: 600,
       });
 
-      const content = response.choices[0]?.message?.content?.trim() || null;
+      const rawContent = response.choices[0]?.message?.content?.trim() || null;
 
-      if (!content) {
+      if (!rawContent) {
         return {
           success: false,
+          subject: null,
           content: null,
           error: 'No content generated',
         };
       }
 
-      console.log(`✅ [OpenAI] Generated ${content.length} chars for: ${contact_data.email}`);
+      // Parse JSON response
+      try {
+        // Clean up any markdown code blocks
+        let jsonStr = rawContent;
+        if (jsonStr.startsWith('```')) {
+          jsonStr = jsonStr.replace(/```json?\n?/g, '').replace(/```/g, '').trim();
+        }
+        
+        const parsed = JSON.parse(jsonStr);
+        
+        console.log(`✅ [OpenAI] Generated subject: "${parsed.subject}" + ${parsed.body?.length || 0} chars body`);
 
-      return {
-        success: true,
-        content,
-        error: null,
-      };
+        return {
+          success: true,
+          subject: parsed.subject || null,
+          content: parsed.body || null,
+          error: null,
+        };
+      } catch (parseError) {
+        // If JSON parsing fails, treat entire response as body
+        console.warn('⚠️ [OpenAI] Failed to parse JSON, using raw content as body');
+        return {
+          success: true,
+          subject: null,
+          content: rawContent,
+          error: null,
+        };
+      }
     } catch (error: any) {
       console.error(`❌ [OpenAI] Error:`, error.message);
       
@@ -89,6 +119,7 @@ Write a personalized cold email for this contact. The email should feel personal
       if (error.status === 429) {
         return {
           success: false,
+          subject: null,
           content: null,
           error: 'Rate limited - will retry',
         };
@@ -96,6 +127,7 @@ Write a personalized cold email for this contact. The email should feel personal
       
       return {
         success: false,
+        subject: null,
         content: null,
         error: error.message || 'OpenAI API error',
       };

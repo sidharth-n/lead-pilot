@@ -24,10 +24,16 @@ export class MockAIService implements IAIService {
       content += `\n\nP.S. I've been following ${contact_data.company}'s journey - impressive work, ${contact_data.first_name}!`;
     }
 
+    // Mock personalized subject
+    const subject = contact_data.company 
+      ? `Quick question about ${contact_data.company}` 
+      : `${contact_data.first_name || 'Hey'}, quick thought`;
+
     console.log(`🤖 [MOCK AI] Generated email for: ${contact_data.email}`);
 
     return {
       success: true,
+      subject,
       content,
       error: null,
     };
