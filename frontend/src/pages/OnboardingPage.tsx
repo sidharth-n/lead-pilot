@@ -171,7 +171,7 @@ export default function OnboardingPage() {
 
       {/* Footer */}
       <footer className="relative z-10 text-center py-6 text-slate-600 text-sm">
-        <p>© 2025 LeadsPilot. Built with ❤️ for sales teams.</p>
+        <p>© 2026 LeadsPilot. Built with ❤️ for sales teams.</p>
       </footer>
     </div>
   );

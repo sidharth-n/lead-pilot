@@ -277,7 +277,7 @@ export default function LandingPage() {
 
       {/* Footer */}
       <footer className="relative z-10 text-center py-8 text-slate-600 text-sm border-t border-slate-800">
-        <p>© 2025 LeadsPilot. Built with ❤️ for sales teams.</p>
+        <p>© 2026 LeadsPilot. Built with ❤️ for sales teams.</p>
       </footer>
     </div>
   );
