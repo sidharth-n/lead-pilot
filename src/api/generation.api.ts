@@ -75,11 +75,15 @@ generationApi.put('/lead/:leadId', async (c) => {
 generationApi.post('/lead/:leadId/regenerate', async (c) => {
   const { leadId } = c.req.param();
 
-  // Reset status to pending so the background job picks it up
+  // Reset status and clear ALL generated content so background job picks it up fresh
   execute(
     `UPDATE campaign_leads SET 
        generation_status = 'generating',
+       generated_subject = NULL,
        generated_body = NULL,
+       generated_follow_up_subject = NULL,
+       generated_follow_up_body = NULL,
+       last_error = NULL,
        updated_at = datetime('now')
      WHERE id = ?`,
     [leadId]
@@ -97,12 +101,18 @@ generationApi.post('/bulk', async (c) => {
       return c.json({ error: 'No lead IDs provided' }, 400);
     }
 
-    // Mark leads as generating
+    // Clear all generated content and mark leads as generating
     const placeholders = body.lead_ids.map(() => '?').join(',');
     execute(
       `UPDATE campaign_leads 
-       SET generation_status = 'generating', updated_at = datetime('now')
-       WHERE id IN (${placeholders}) AND generation_status IN ('template', 'failed')`,
+       SET generation_status = 'generating',
+           generated_subject = NULL,
+           generated_body = NULL,
+           generated_follow_up_subject = NULL,
+           generated_follow_up_body = NULL,
+           last_error = NULL,
+           updated_at = datetime('now')
+       WHERE id IN (${placeholders})`,
       body.lead_ids
     );
 

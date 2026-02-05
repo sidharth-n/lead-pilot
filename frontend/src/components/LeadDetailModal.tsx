@@ -82,20 +82,33 @@ export function LeadDetailModal({ leadId, lead, campaign, onClose, onSave }: Lea
             stopPolling();
           }
         } else if (json.lead.generation_status === 'failed') {
-          // Generation failed
+          // Generation failed - show error and stop
           if (regeneratingRef.current) {
             regeneratingRef.current = false;
             setRegenerating(false);
             stopPolling();
+            // Optionally show the error
+            if (json.lead.last_error) {
+              alert(`Generation failed: ${json.lead.last_error}`);
+            }
           }
-        } else if (json.lead.generation_status === 'pending') {
+          setActiveTab('default'); // Fall back to default tab
+        } else if (json.lead.generation_status === 'pending' || json.lead.generation_status === 'template') {
           // No AI content yet, show default tab
-          setActiveTab('default');
+          if (!regeneratingRef.current) {
+            setActiveTab('default');
+          }
         }
         // If status is 'generating', keep polling
       }
     } catch (err) {
       console.error(err);
+      // On error, stop polling to prevent infinite loops
+      if (regeneratingRef.current) {
+        regeneratingRef.current = false;
+        setRegenerating(false);
+        stopPolling();
+      }
     } finally {
       if (!regeneratingRef.current) setLoading(false);
     }
@@ -133,10 +146,25 @@ export function LeadDetailModal({ leadId, lead, campaign, onClose, onSave }: Lea
     
     regeneratingRef.current = true;
     setRegenerating(true);
+    
     try {
       await generationApi.regenerate(leadId);
-      // Start polling for results
-      pollInterval.current = setInterval(loadData, 2000);
+      // Start polling for results (poll every 2 sec, max 90 seconds = 45 polls)
+      let pollCount = 0;
+      const maxPolls = 45;
+      
+      pollInterval.current = setInterval(() => {
+        pollCount++;
+        if (pollCount >= maxPolls) {
+          // Timeout - stop polling
+          regeneratingRef.current = false;
+          setRegenerating(false);
+          stopPolling();
+          alert('Generation is taking longer than expected. The content will appear when ready.');
+          return;
+        }
+        loadData();
+      }, 2000);
     } catch (err) {
       alert('Failed to queue regeneration');
       regeneratingRef.current = false;

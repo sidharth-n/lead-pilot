@@ -75,6 +75,22 @@ export class EmailGenerator {
   }
 
   private async processPendingLeads(): Promise<void> {
+    // First, check for and reset any stuck leads (generating for >2 minutes)
+    const STUCK_TIMEOUT_MINUTES = 2;
+    try {
+      execute(
+        `UPDATE campaign_leads 
+         SET generation_status = 'failed', 
+             last_error = 'Timeout: Generation took too long. Please try again.',
+             updated_at = datetime('now')
+         WHERE generation_status = 'generating' 
+           AND updated_at < datetime('now', '-' || ? || ' minutes')`,
+        [STUCK_TIMEOUT_MINUTES]
+      );
+    } catch (err) {
+      console.error('Error resetting stuck leads:', err);
+    }
+
     // Find leads needing generation (status = 'generating' means user triggered it)
     const leads = query<CampaignLeadWithDetails>(
       `SELECT cl.*, 
@@ -86,6 +102,7 @@ export class EmailGenerator {
        JOIN campaigns ca ON cl.campaign_id = ca.id
        WHERE cl.generation_status = 'generating'
          AND ca.status IN ('draft', 'active') 
+       ORDER BY cl.updated_at ASC
        LIMIT ?`,
       [this.config.batchSize]
     );
@@ -95,7 +112,16 @@ export class EmailGenerator {
     }
 
     for (let i = 0; i < leads.length; i++) {
-      await this.generateForLead(leads[i]);
+      try {
+        await this.generateForLead(leads[i]);
+      } catch (err: any) {
+        console.error(`❌ Unexpected error for ${leads[i].email}:`, err);
+        // Mark as failed to prevent infinite loop
+        execute(
+          `UPDATE campaign_leads SET generation_status = 'failed', last_error = ?, updated_at = datetime('now') WHERE id = ?`,
+          [`Unexpected error: ${err.message || err}`, leads[i].id]
+        );
+      }
       
       // Add delay between leads to avoid rate limiting (except for last one)
       if (i < leads.length - 1) {
