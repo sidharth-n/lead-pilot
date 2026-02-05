@@ -4,6 +4,7 @@ import { Play, Pause, UserPlus, Reply, RefreshCw, Eye, Search, Sparkles, Setting
 import { Layout } from '../components/Layout';
 import { Button, Card, StatusBadge } from '../components/ui';
 import { PreviewEmailModal } from '../components/PreviewEmailModal';
+import { AddLeadsModal } from '../components/AddLeadsModal';
 import { campaignsApi, contactsApi, researchApi, generationApi } from '../api';
 import { format } from 'date-fns';
 
@@ -81,18 +82,6 @@ export default function CampaignDetailPage() {
       loadData();
     } catch (err: any) {
       alert('Action failed: ' + err.message);
-    }
-  };
-
-  const handleAddLeads = async () => {
-    if (!id || selectedContacts.length === 0) return;
-    try {
-      await campaignsApi.addLeads(id, selectedContacts);
-      setShowAddLeads(false);
-      setSelectedContacts([]);
-      loadData();
-    } catch (err: any) {
-      alert('Failed to add leads: ' + err.message);
     }
   };
 
@@ -257,44 +246,27 @@ export default function CampaignDetailPage() {
         </div>
       </div>
 
-      {/* Add Leads Modal/Panel */}
+      {/* Add Leads Modal - Full Page */}
       {showAddLeads && (
-        <Card className="mb-8 p-6 bg-blue-50 border-blue-100">
-          <h2 className="text-lg font-semibold mb-4 text-blue-900">Select Contacts to Add</h2>
-          <div className="bg-white rounded-lg border border-gray-200 max-h-60 overflow-y-auto mb-4">
-            {contacts.map(contact => {
-              const isAlreadyAdded = leads?.some(l => l.contact_id === contact.id);
-              return (
-                <label key={contact.id} className={`flex items-center p-3 border-b border-gray-100 hover:bg-gray-50 cursor-pointer ${isAlreadyAdded ? 'opacity-50 bg-gray-50' : ''}`}>
-                  <input
-                    type="checkbox"
-                    className="mr-3 rounded text-blue-600 focus:ring-blue-500"
-                    checked={selectedContacts.includes(contact.id)}
-                    onChange={e => {
-                      if (e.target.checked) {
-                        setSelectedContacts([...selectedContacts, contact.id]);
-                      } else {
-                        setSelectedContacts(selectedContacts.filter(id => id !== contact.id));
-                      }
-                    }}
-                    disabled={isAlreadyAdded}
-                  />
-                  <div>
-                    <div className="font-medium text-gray-900">{contact.first_name} {contact.last_name}</div>
-                    <div className="text-xs text-gray-500">{contact.email}</div>
-                  </div>
-                  {isAlreadyAdded && <span className="ml-auto text-xs text-green-600 font-medium">Already Added</span>}
-                </label>
-              );
-            })}
-          </div>
-          <div className="flex gap-2 justify-end">
-            <Button variant="ghost" onClick={() => setShowAddLeads(false)}>Cancel</Button>
-            <Button onClick={handleAddLeads} disabled={selectedContacts.length === 0}>
-              Add {selectedContacts.length} Leads
-            </Button>
-          </div>
-        </Card>
+        <AddLeadsModal
+          contacts={contacts}
+          existingLeadIds={leads?.map(l => l.contact_id) || []}
+          onClose={() => {
+            setShowAddLeads(false);
+            setSelectedContacts([]);
+          }}
+          onAdd={async (contactIds) => {
+            if (!id) return;
+            try {
+              await campaignsApi.addLeads(id, contactIds);
+              setShowAddLeads(false);
+              setSelectedContacts([]);
+              loadData();
+            } catch (err: any) {
+              alert('Failed to add leads: ' + err.message);
+            }
+          }}
+        />
       )}
 
       {/* Stats Grid */}
