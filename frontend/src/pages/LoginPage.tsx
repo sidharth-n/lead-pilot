@@ -1,6 +1,6 @@
 import { useState } from 'react';
 import { useNavigate } from 'react-router-dom';
-import { Rocket, Mail } from 'lucide-react';
+import { Mail } from 'lucide-react';
 
 export default function LoginPage() {
   const navigate = useNavigate();
