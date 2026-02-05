@@ -1,6 +1,7 @@
 import { Routes, Route } from 'react-router-dom';
 import { ToastProvider } from './components/Toast';
 import LandingPage from './pages/LandingPage';
+import LoginPage from './pages/LoginPage';
 import OnboardingPage from './pages/OnboardingPage';
 import DashboardPage from './pages/DashboardPage';
 import ContactsPage from './pages/ContactsPage';
@@ -12,6 +13,7 @@ function App() {
     <ToastProvider>
       <Routes>
         <Route path="/" element={<LandingPage />} />
+        <Route path="/login" element={<LoginPage />} />
         <Route path="/onboarding" element={<OnboardingPage />} />
         <Route path="/dashboard" element={<DashboardPage />} />
         <Route path="/contacts" element={<ContactsPage />} />

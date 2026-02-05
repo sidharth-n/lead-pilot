@@ -26,7 +26,7 @@ export default function LandingPage() {
             ✨ Beta
           </span>
           <button 
-            onClick={() => navigate('/onboarding')}
+            onClick={() => navigate('/login')}
             className="px-5 py-2.5 bg-white/10 hover:bg-white/15 text-white rounded-lg font-medium text-sm transition-all border border-white/10"
           >
             Get Started
@@ -59,7 +59,7 @@ export default function LandingPage() {
         {/* CTA Buttons */}
         <div className="flex flex-col sm:flex-row items-center gap-4 mb-16">
           <button 
-            onClick={() => navigate('/onboarding')}
+            onClick={() => navigate('/login')}
             className="group px-8 py-4 bg-gradient-to-r from-blue-500 to-violet-500 text-white rounded-xl font-semibold text-lg shadow-lg shadow-blue-500/25 hover:shadow-blue-500/40 transition-all flex items-center gap-3 hover:scale-[1.02]"
           >
             Try Beta Free
@@ -237,7 +237,7 @@ export default function LandingPage() {
                 Join the beta and start sending personalized emails today. No credit card required.
               </p>
               <button 
-                onClick={() => navigate('/onboarding')}
+                onClick={() => navigate('/login')}
                 className="group px-8 py-4 bg-gradient-to-r from-blue-500 to-violet-500 text-white rounded-xl font-semibold text-lg shadow-lg shadow-blue-500/25 hover:shadow-blue-500/40 transition-all flex items-center gap-3 mx-auto hover:scale-[1.02]"
               >
                 Start Free Trial
