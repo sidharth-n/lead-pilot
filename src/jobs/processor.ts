@@ -268,11 +268,28 @@ export class CampaignProcessor {
 
     try {
       // Generate follow-up content
-      let subject = lead.follow_up_subject || `Re: ${lead.generated_subject}`;
-      let body = lead.follow_up_body || 'Just following up on my previous email. Would love to connect!';
+      // PRIORITY: 1) AI-generated, 2) Campaign template, 3) Fallback
+      let subject: string;
+      let body: string;
 
-      body = this.replaceTemplateVars(body, lead);
-      subject = this.replaceTemplateVars(subject, lead);
+      // Check if AI-generated follow-up content exists
+      if (lead.generated_follow_up_body && lead.generation_status === 'ready') {
+        // Use AI-generated follow-up
+        body = lead.generated_follow_up_body;
+        subject = lead.generated_follow_up_subject || `Re: ${lead.generated_subject}`;
+        console.log(`✨ Using AI-generated follow-up for ${lead.email}`);
+      } else if (lead.follow_up_body) {
+        // Use campaign template
+        body = this.replaceTemplateVars(lead.follow_up_body, lead);
+        subject = lead.follow_up_subject 
+          ? this.replaceTemplateVars(lead.follow_up_subject, lead)
+          : `Re: ${lead.generated_subject}`;
+        console.log(`📝 Using template follow-up for ${lead.email}`);
+      } else {
+        // Fallback
+        body = 'Just following up on my previous email. Would love to connect!';
+        subject = `Re: ${lead.generated_subject}`;
+      }
 
       // Send
       const result = await emailService.send({
