@@ -116,8 +116,15 @@ export function AddLeadsModal({ contacts, existingLeadIds, onClose, onAdd }: Add
             <tbody className="divide-y divide-gray-100">
               {paginatedContacts.length === 0 ? (
                 <tr>
-                  <td colSpan={6} className="px-6 py-12 text-center text-gray-500">
-                    No contacts found
+                  <td colSpan={6} className="px-6 py-12 text-center">
+                    <div className="text-gray-500 mb-4">No contacts found</div>
+                    <a 
+                      href="/contacts" 
+                      className="inline-flex items-center px-4 py-2 bg-blue-600 text-white rounded-lg hover:bg-blue-700 transition-colors text-sm"
+                    >
+                      <UserPlus className="w-4 h-4 mr-2" />
+                      Add Contacts First
+                    </a>
                   </td>
                 </tr>
               ) : (

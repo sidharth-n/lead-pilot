@@ -55,7 +55,7 @@ export default function CampaignsPage() {
   const [formData, setFormData] = useState({
     name: '',
     from_name: '',
-    from_email: '',
+    from_email: 'test@leadspilot.app',
     subject_template: '',
     body_template: '',
     ai_prompt: '',
@@ -98,7 +98,7 @@ export default function CampaignsPage() {
 
   const canProceed = () => {
     switch (currentStep) {
-      case 1: return formData.name && formData.from_name && formData.from_email;
+      case 1: return formData.name && formData.from_name;
       case 2: return formData.subject_template && formData.body_template;
       case 3: return formData.ai_prompt;
       case 4: return true;
@@ -110,7 +110,7 @@ export default function CampaignsPage() {
     setFormData({
       name: '',
       from_name: '',
-      from_email: '',
+      from_email: 'test@leadspilot.app',
       subject_template: '',
       body_template: '',
       ai_prompt: '',
@@ -222,14 +222,14 @@ export default function CampaignsPage() {
                       />
                     </div>
                     <div>
-                      <label className="block text-sm font-medium text-gray-700 mb-2">Your Email</label>
+                      <label className="block text-sm font-medium text-gray-700 mb-2">From Email</label>
                       <input
                         type="email"
-                        className="w-full rounded-xl border-gray-200 shadow-sm focus:border-blue-500 focus:ring-blue-500 px-4 py-3 border"
+                        className="w-full rounded-xl border-gray-200 shadow-sm px-4 py-3 border bg-gray-50 text-gray-600 cursor-not-allowed"
                         value={formData.from_email}
-                        onChange={e => setFormData({ ...formData, from_email: e.target.value })}
-                        placeholder="you@company.com"
+                        disabled
                       />
+                      <p className="text-xs text-gray-400 mt-1">Test mode email (your domain coming soon)</p>
                     </div>
                   </div>
                 </div>
