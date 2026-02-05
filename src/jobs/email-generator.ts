@@ -27,6 +27,7 @@ interface CampaignLeadWithDetails extends CampaignLead {
   follow_up_subject: string | null;
   follow_up_body: string | null;
   follow_up_ai_prompt: string | null;
+  sender_name: string | null;
 }
 
 export class EmailGenerator {
@@ -97,7 +98,8 @@ export class EmailGenerator {
       `SELECT cl.*, 
               c.email, c.first_name, c.last_name, c.company, c.job_title, c.headline, c.custom_data,
               ca.name as campaign_name, ca.subject_template, ca.body_template, ca.ai_prompt,
-              ca.follow_up_enabled, ca.follow_up_subject, ca.follow_up_body, ca.follow_up_ai_prompt
+              ca.follow_up_enabled, ca.follow_up_subject, ca.follow_up_body, ca.follow_up_ai_prompt,
+              ca.from_name as sender_name
        FROM campaign_leads cl
        JOIN contacts c ON cl.contact_id = c.id
        JOIN campaigns ca ON cl.campaign_id = ca.id
@@ -160,6 +162,10 @@ export class EmailGenerator {
 
       // Build enhanced prompt with research data if available
       let enhancedPrompt = lead.ai_prompt || 'Write a personalized cold email.';
+      
+      // Add sender name for signature
+      const senderFirstName = lead.sender_name?.split(' ')[0] || 'Me';
+      enhancedPrompt += `\n\nSENDER'S FIRST NAME: ${senderFirstName}`;
       
       // Add research intel if available
       if (lead.research_data) {
@@ -241,14 +247,14 @@ RULES:
 - Keep it SHORT (2-3 sentences max)
 - Use \\n\\n for paragraph breaks
 - Sound genuinely curious, not pushy
-- End with: "Best,\\n\\n[FirstName]"
+- End with: "Best,\\n\\n${senderFirstName}"
 - AVOID spam words: "opportunity", "boost", "exciting", "limited", "urgent"`
           : `Write a SHORT follow-up email. RULES:
 - 2-3 sentences only
 - Mention you reached out before
 - Separate lines with \\n\\n
 - Be casual and friendly
-- End with: "Best,\\n\\n[FirstName]"
+- End with: "Best,\\n\\n${senderFirstName}"
 - AVOID: "opportunity", "boost", "exciting", "just checking in"`;
         
         // AI Generation for Follow-up 
