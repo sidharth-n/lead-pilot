@@ -26,7 +26,7 @@ export function Layout({ children }: LayoutProps) {
       <aside className="w-64 bg-white border-r border-gray-200 fixed h-full z-10">
         <div className="p-6">
           <h1 className="text-2xl font-bold text-blue-600 flex items-center gap-2">
-            <img src="/logo.png" alt="LeadPilot" className="w-8 h-8 object-contain" /> LeadPilot
+            <img src="/logo.png" alt="LeadsPilot" className="w-8 h-8 object-contain" /> LeadsPilot
           </h1>
         </div>
         <nav className="p-4 space-y-1">

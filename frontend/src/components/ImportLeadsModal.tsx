@@ -141,7 +141,7 @@ export function ImportLeadsModal({ onClose, onSuccess }: ImportLeadsModalProps) 
         {step === 'mapping' && (
           <div className="space-y-4">
              <div className="bg-blue-50 p-4 rounded-lg text-sm text-blue-700 mb-4">
-              We found {headers.length} columns. Please map them to LeadPilot fields.
+              We found {headers.length} columns. Please map them to LeadsPilot fields.
             </div>
             
             <div className="grid gap-3 max-h-80 overflow-y-auto">
