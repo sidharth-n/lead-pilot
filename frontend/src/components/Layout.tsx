@@ -38,9 +38,9 @@ export function Layout({ children }: LayoutProps) {
         </div>
         <nav className="p-4 space-y-1">
           <Link
-            to="/"
+            to="/dashboard"
             className={`flex items-center gap-3 px-4 py-3 rounded-lg font-medium transition-colors ${
-              isActive('/') 
+              isActive('/dashboard') 
                 ? 'bg-blue-50 text-blue-600' 
                 : 'text-gray-600 hover:bg-gray-100'
             }`}
