@@ -29,6 +29,7 @@ export function LeadDetailModal({ leadId, lead, campaign, onClose, onSave }: Lea
   const [showFullResearch, setShowFullResearch] = useState(false);
   
   const pollInterval = useRef<NodeJS.Timeout | null>(null);
+  const regeneratingRef = useRef(false); // Track regenerating state to avoid stale closure
 
   useEffect(() => {
     loadData();
@@ -66,37 +67,37 @@ export function LeadDetailModal({ leadId, lead, campaign, onClose, onSave }: Lea
       if (json.lead) {
         setData(json.lead);
         
-        // If AI content exists, use it
+        // Update edited fields when AI content is ready
         if (json.lead.generation_status === 'ready') {
           setEditedSubject(json.lead.generated_subject || '');
           setEditedBody(json.lead.generated_body || '');
           setEditedFollowUpSubject(json.lead.generated_follow_up_subject || '');
           setEditedFollowUpBody(json.lead.generated_follow_up_body || '');
           setActiveTab('ai');
-        } else {
-          // Use template
+          
+          // If we were regenerating, stop now
+          if (regeneratingRef.current) {
+            regeneratingRef.current = false;
+            setRegenerating(false);
+            stopPolling();
+          }
+        } else if (json.lead.generation_status === 'failed') {
+          // Generation failed
+          if (regeneratingRef.current) {
+            regeneratingRef.current = false;
+            setRegenerating(false);
+            stopPolling();
+          }
+        } else if (json.lead.generation_status === 'pending') {
+          // No AI content yet, show default tab
           setActiveTab('default');
         }
-        
-        if (regenerating && json.lead.generation_status === 'ready') {
-          setRegenerating(false);
-          stopPolling();
-          setEditedSubject(json.lead.generated_subject || '');
-          setEditedBody(json.lead.generated_body || '');
-          setEditedFollowUpSubject(json.lead.generated_follow_up_subject || '');
-          setEditedFollowUpBody(json.lead.generated_follow_up_body || '');
-          setActiveTab('ai');
-        }
-        
-        if (json.lead.generation_status === 'failed') {
-          setRegenerating(false);
-          stopPolling();
-        }
+        // If status is 'generating', keep polling
       }
     } catch (err) {
       console.error(err);
     } finally {
-      if (!regenerating) setLoading(false);
+      if (!regeneratingRef.current) setLoading(false);
     }
   };
 
@@ -130,12 +131,15 @@ export function LeadDetailModal({ leadId, lead, campaign, onClose, onSave }: Lea
   const handleRegenerate = async () => {
     if (!confirm('This will generate new AI-personalized content. Continue?')) return;
     
+    regeneratingRef.current = true;
     setRegenerating(true);
     try {
       await generationApi.regenerate(leadId);
+      // Start polling for results
       pollInterval.current = setInterval(loadData, 2000);
     } catch (err) {
       alert('Failed to queue regeneration');
+      regeneratingRef.current = false;
       setRegenerating(false);
     }
   };
