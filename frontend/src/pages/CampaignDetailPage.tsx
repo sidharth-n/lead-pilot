@@ -3,7 +3,7 @@ import { useParams, useNavigate } from 'react-router-dom';
 import { Play, Pause, UserPlus, Reply, RefreshCw, Eye, Search, Sparkles, Settings, Trash2, X, ChevronDown, ChevronUp } from 'lucide-react';
 import { Layout } from '../components/Layout';
 import { Button, Card, StatusBadge } from '../components/ui';
-import { PreviewEmailModal } from '../components/PreviewEmailModal';
+import { LeadDetailModal } from '../components/LeadDetailModal';
 import { AddLeadsModal } from '../components/AddLeadsModal';
 import { campaignsApi, contactsApi, researchApi, generationApi } from '../api';
 import { format } from 'date-fns';
@@ -312,7 +312,7 @@ export default function CampaignDetailPage() {
                   className="text-blue-600 border-blue-200 hover:bg-blue-50"
                 >
                   <Search className={`w-4 h-4 mr-1 ${isResearching ? 'animate-spin' : ''}`} />
-                  {isResearching ? 'Researching...' : '🔍 Research'}
+                  {isResearching ? 'Researching...' : 'Research'}
                 </Button>
                 <Button 
                   size="sm" 
@@ -322,7 +322,7 @@ export default function CampaignDetailPage() {
                   className="text-purple-600 border-purple-200 hover:bg-purple-50"
                 >
                   <Sparkles className={`w-4 h-4 mr-1 ${isGenerating ? 'animate-pulse' : ''}`} />
-                  {isGenerating ? 'Generating...' : '🤖 Generate AI'}
+                  {isGenerating ? 'Generating...' : 'Generate'}
                 </Button>
               </div>
             )}
@@ -354,8 +354,8 @@ export default function CampaignDetailPage() {
                   />
                 </th>
                 <th className="px-6 py-3 font-medium text-gray-500">Contact</th>
-                <th className="px-6 py-3 font-medium text-gray-500">Intel</th>
-                <th className="px-6 py-3 font-medium text-gray-500">Email</th>
+                <th className="px-6 py-3 font-medium text-gray-500">Research</th>
+                <th className="px-6 py-3 font-medium text-gray-500">Content</th>
                 <th className="px-6 py-3 font-medium text-gray-500">Status</th>
                 <th className="px-6 py-3 font-medium text-gray-500 text-right">Actions</th>
               </tr>
@@ -378,7 +378,15 @@ export default function CampaignDetailPage() {
                 </tr>
               ) : (
                 leads?.map(lead => (
-                  <tr key={lead.id} className={`hover:bg-gray-50 transition-colors ${selectedLeads.includes(lead.id) ? 'bg-blue-50' : ''}`}>
+                  <tr 
+                    key={lead.id} 
+                    className={`hover:bg-gray-50 transition-colors cursor-pointer ${selectedLeads.includes(lead.id) ? 'bg-blue-50' : ''}`}
+                    onClick={(e) => {
+                      // Don't open modal if clicking checkbox
+                      if ((e.target as HTMLElement).closest('input[type="checkbox"]')) return;
+                      setPreviewLeadId(lead.id);
+                    }}
+                  >
                     {/* Checkbox */}
                     <td className="px-6 py-4">
                       <input 
@@ -425,8 +433,8 @@ export default function CampaignDetailPage() {
                     <td className="px-6 py-4">
                       {lead.generation_status === 'ready' ? (
                         <div>
-                          <span className="inline-flex items-center px-2 py-0.5 rounded text-xs font-medium bg-green-100 text-green-800 mb-1">
-                            ✨ AI Ready
+                          <span className="inline-flex items-center px-1.5 py-0.5 rounded text-xs font-medium bg-green-100 text-green-800 mb-1">
+                            AI
                           </span>
                           <div className="text-xs text-gray-600 truncate max-w-xs" title={lead.generated_subject}>
                             {lead.generated_subject?.slice(0, 40)}...
@@ -441,8 +449,8 @@ export default function CampaignDetailPage() {
                           ✗ Failed
                         </span>
                       ) : (
-                        <span className="inline-flex items-center px-2 py-0.5 rounded text-xs font-medium bg-gray-100 text-gray-600">
-                          Template
+                        <span className="inline-flex items-center px-1.5 py-0.5 rounded text-xs font-medium bg-gray-100 text-gray-600">
+                          Default
                         </span>
                       )}
                     </td>
@@ -485,12 +493,13 @@ export default function CampaignDetailPage() {
         </div>
       </Card>
       
-      {/* Preview Modal */}
+      {/* Lead Detail Modal */}
       {previewLeadId && id && campaign && (
-         <PreviewEmailModal 
+         <LeadDetailModal 
            campaignId={id} 
-           leadId={previewLeadId} 
-           aiPrompt={campaign.ai_prompt}
+           leadId={previewLeadId}
+           lead={leads.find(l => l.id === previewLeadId)}
+           campaign={campaign}
            onClose={() => setPreviewLeadId(null)}
            onSave={loadData}
          />
