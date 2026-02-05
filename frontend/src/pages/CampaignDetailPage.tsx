@@ -534,7 +534,10 @@ export default function CampaignDetailPage() {
                         <Button 
                           size="sm" 
                           variant="outline"
-                          onClick={() => setPreviewLeadId(lead.id)}
+                          onClick={(e) => {
+                            e.stopPropagation();
+                            setPreviewLeadId(lead.id);
+                          }}
                         >
                           <Eye className="w-3 h-3 mr-1" /> View
                         </Button>
@@ -544,7 +547,10 @@ export default function CampaignDetailPage() {
                             size="sm" 
                             variant="outline" 
                             className="text-green-600 border-green-200 hover:bg-green-50"
-                            onClick={() => handleSimulateReply(lead.id)}
+                            onClick={(e) => {
+                              e.stopPropagation(); // Prevent row click from opening modal
+                              handleSimulateReply(lead.id);
+                            }}
                             disabled={simulating === lead.id}
                           >
                             <Reply className="w-3 h-3 mr-1" />
