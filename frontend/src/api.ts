@@ -29,6 +29,7 @@ export const contactsApi = {
 export const campaignsApi = {
   list: () => api<{ campaigns: any[] }>('/campaigns'),
   get: (id: string) => api<{ campaign: any; stats: any }>(`/campaigns/${id}`),
+  getStats: () => api<{ active_campaigns: number; total_leads: number; emails_sent_today: number; total_replies: number }>('/campaigns/stats'),
   create: (data: any) => api('/campaigns', { method: 'POST', body: JSON.stringify(data) }),
   update: (id: string, data: any) => api(`/campaigns/${id}`, { method: 'PUT', body: JSON.stringify(data) }),
   delete: (id: string) => api(`/campaigns/${id}`, { method: 'DELETE' }),

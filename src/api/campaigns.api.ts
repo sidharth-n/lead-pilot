@@ -10,6 +10,32 @@ import type { Campaign, CampaignLead, CreateCampaignInput } from '../types';
 const campaignsApi = new Hono();
 const TEST_USER_ID = 'test-user-001';
 
+// GET /api/campaigns/stats - Dashboard stats
+campaignsApi.get('/stats', (c) => {
+  try {
+    const stats = queryOne<{
+      active_campaigns: number;
+      total_leads: number;
+      emails_sent_today: number;
+      total_replies: number;
+    }>(`
+      SELECT 
+        (SELECT COUNT(*) FROM campaigns WHERE user_id = ? AND status = 'active') as active_campaigns,
+        (SELECT COUNT(*) FROM campaign_leads cl JOIN campaigns c ON cl.campaign_id = c.id WHERE c.user_id = ?) as total_leads,
+        (SELECT COUNT(*) FROM email_logs el 
+         JOIN campaign_leads cl ON el.campaign_lead_id = cl.id 
+         JOIN campaigns c ON cl.campaign_id = c.id 
+         WHERE c.user_id = ? AND date(el.created_at) = date('now') AND el.status = 'sent') as emails_sent_today,
+        (SELECT COUNT(*) FROM campaign_leads cl JOIN campaigns c ON cl.campaign_id = c.id WHERE c.user_id = ? AND cl.replied_at IS NOT NULL) as total_replies
+    `, [TEST_USER_ID, TEST_USER_ID, TEST_USER_ID, TEST_USER_ID]);
+    
+    return c.json(stats || { active_campaigns: 0, total_leads: 0, emails_sent_today: 0, total_replies: 0 });
+  } catch (error) {
+    console.error('Error getting stats:', error);
+    return c.json({ active_campaigns: 0, total_leads: 0, emails_sent_today: 0, total_replies: 0 });
+  }
+});
+
 // GET /api/campaigns - List campaigns
 campaignsApi.get('/', (c) => {
   try {

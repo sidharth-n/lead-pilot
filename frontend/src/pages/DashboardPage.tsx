@@ -3,23 +3,34 @@ import { Layout } from '../components/Layout';
 import { Card, StatusBadge } from '../components/ui';
 import { campaignsApi } from '../api';
 import { Link } from 'react-router-dom';
-import { ArrowRight, Activity, Users, Mail } from 'lucide-react';
+import { ArrowRight, Activity, Users, Mail, MessageSquare } from 'lucide-react';
 
 export default function DashboardPage() {
-  const [stats, setStats] = useState({ active: 0, total_leads: 0, sent_today: 0 });
+  const [stats, setStats] = useState({ 
+    active_campaigns: 0, 
+    total_leads: 0, 
+    emails_sent_today: 0,
+    total_replies: 0 
+  });
   const [recentCampaigns, setRecentCampaigns] = useState<any[]>([]);
+  const [loading, setLoading] = useState(true);
 
   useEffect(() => {
-    // Mock stats for now or fetch real ones if endpoints exist
-    // Just fetching campaigns for the list
-    campaignsApi.list().then(data => {
-      setRecentCampaigns(data.campaigns.slice(0, 3));
-      setStats({
-        active: data.campaigns.filter(c => c.status === 'active').length,
-        total_leads: 0, // Need aggregation endpoint
-        sent_today: 0   // Need aggregation endpoint
-      });
-    });
+    const loadData = async () => {
+      try {
+        const [statsData, campaignData] = await Promise.all([
+          campaignsApi.getStats(),
+          campaignsApi.list()
+        ]);
+        setStats(statsData);
+        setRecentCampaigns(campaignData.campaigns.slice(0, 5));
+      } catch (err) {
+        console.error('Failed to load dashboard:', err);
+      } finally {
+        setLoading(false);
+      }
+    };
+    loadData();
   }, []);
 
   return (
@@ -29,14 +40,16 @@ export default function DashboardPage() {
         <p className="text-gray-500 mt-1">Overview of your outreach performance</p>
       </div>
 
-      <div className="grid grid-cols-1 md:grid-cols-3 gap-6 mb-8">
+      <div className="grid grid-cols-1 md:grid-cols-4 gap-6 mb-8">
         <Card className="p-6 border-l-4 border-l-blue-500">
           <div className="flex items-center justify-between mb-4">
             <div className="p-2 bg-blue-50 rounded-lg text-blue-600">
               <Activity className="w-6 h-6" />
             </div>
           </div>
-          <div className="text-2xl font-bold text-gray-900">{stats.active}</div>
+          <div className="text-2xl font-bold text-gray-900">
+            {loading ? '...' : stats.active_campaigns}
+          </div>
           <div className="text-sm text-gray-500">Active Campaigns</div>
         </Card>
         
@@ -46,7 +59,9 @@ export default function DashboardPage() {
               <Users className="w-6 h-6" />
             </div>
           </div>
-          <div className="text-2xl font-bold text-gray-900">--</div>
+          <div className="text-2xl font-bold text-gray-900">
+            {loading ? '...' : stats.total_leads}
+          </div>
           <div className="text-sm text-gray-500">Total Leads</div>
         </Card>
 
@@ -56,8 +71,22 @@ export default function DashboardPage() {
               <Mail className="w-6 h-6" />
             </div>
           </div>
-          <div className="text-2xl font-bold text-gray-900">--</div>
-          <div className="text-sm text-gray-500">Emails Sent Today</div>
+          <div className="text-2xl font-bold text-gray-900">
+            {loading ? '...' : stats.emails_sent_today}
+          </div>
+          <div className="text-sm text-gray-500">Sent Today</div>
+        </Card>
+
+        <Card className="p-6 border-l-4 border-l-orange-500">
+          <div className="flex items-center justify-between mb-4">
+            <div className="p-2 bg-orange-50 rounded-lg text-orange-600">
+              <MessageSquare className="w-6 h-6" />
+            </div>
+          </div>
+          <div className="text-2xl font-bold text-gray-900">
+            {loading ? '...' : stats.total_replies}
+          </div>
+          <div className="text-sm text-gray-500">Total Replies</div>
         </Card>
       </div>
 
