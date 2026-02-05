@@ -368,11 +368,11 @@ export default function CampaignDetailPage() {
           )}
         </div>
 
-        <div className="overflow-x-auto">
-          <table className="w-full text-left text-sm">
+        <div className="overflow-hidden">
+          <table className="w-full text-left text-sm table-fixed">
             <thead className="bg-white border-b border-gray-200">
               <tr>
-                <th className="px-6 py-3 font-medium text-gray-500">
+                <th className="px-4 py-3 font-medium text-gray-500 w-10">
                   <input 
                     type="checkbox" 
                     checked={leads.length > 0 && selectedLeads.length === leads.length}
@@ -380,11 +380,11 @@ export default function CampaignDetailPage() {
                     className="rounded text-blue-600 focus:ring-blue-500"
                   />
                 </th>
-                <th className="px-6 py-3 font-medium text-gray-500">Contact</th>
-                <th className="px-6 py-3 font-medium text-gray-500">Research</th>
-                <th className="px-6 py-3 font-medium text-gray-500">Content</th>
-                <th className="px-6 py-3 font-medium text-gray-500">Status</th>
-                <th className="px-6 py-3 font-medium text-gray-500 text-right">Actions</th>
+                <th className="px-4 py-3 font-medium text-gray-500 w-36">Contact</th>
+                <th className="px-4 py-3 font-medium text-gray-500 w-28">Research</th>
+                <th className="px-4 py-3 font-medium text-gray-500 w-44">Content</th>
+                <th className="px-4 py-3 font-medium text-gray-500 w-32">Status</th>
+                <th className="px-4 py-3 font-medium text-gray-500 text-right w-36">Actions</th>
               </tr>
             </thead>
             <tbody className="divide-y divide-gray-100">
@@ -415,7 +415,7 @@ export default function CampaignDetailPage() {
                     }}
                   >
                     {/* Checkbox */}
-                    <td className="px-6 py-4">
+                    <td className="px-4 py-4">
                       <input 
                         type="checkbox" 
                         checked={selectedLeads.includes(lead.id)}
@@ -425,51 +425,44 @@ export default function CampaignDetailPage() {
                     </td>
                     
                     {/* Contact */}
-                    <td className="px-6 py-4">
-                      <div className="font-medium text-gray-900">{lead.first_name || 'Unknown'}</div>
-                      <div className="text-gray-500 text-xs">{lead.company || lead.email}</div>
+                    <td className="px-4 py-4">
+                      <div className="font-medium text-gray-900 truncate">{lead.first_name || 'Unknown'}</div>
+                      <div className="text-gray-500 text-xs truncate">{lead.company || lead.email}</div>
                     </td>
                     
                     {/* Intel/Research */}
-                    <td className="px-6 py-4">
+                    <td className="px-4 py-4">
                       {lead.research_status === 'complete' ? (
-                        <div className="max-w-xs">
-                          <span className="inline-flex items-center px-2 py-0.5 rounded text-xs font-medium bg-blue-100 text-blue-800 mb-1">
-                            ✓ Researched
-                          </span>
-                          <div className="text-xs text-gray-600 truncate" title={lead.research_data ? JSON.parse(lead.research_data)?.summary : ''}>
-                            {lead.research_data ? JSON.parse(lead.research_data)?.summary?.slice(0, 50) + '...' : ''}
-                          </div>
-                        </div>
+                        <span className="inline-flex items-center px-2 py-0.5 rounded text-xs font-medium bg-blue-100 text-blue-800">
+                          ✓ Researched
+                        </span>
                       ) : lead.research_status === 'researching' ? (
                         <span className="inline-flex items-center px-2 py-0.5 rounded text-xs font-medium bg-yellow-100 text-yellow-800">
-                          <RefreshCw className="w-3 h-3 mr-1 animate-spin" /> Researching...
+                          <RefreshCw className="w-3 h-3 mr-1 animate-spin" /> Researching
                         </span>
                       ) : lead.research_status === 'failed' ? (
                         <span className="inline-flex items-center px-2 py-0.5 rounded text-xs font-medium bg-red-100 text-red-800">
                           ✗ Failed
                         </span>
                       ) : (
-                        <span className="inline-flex items-center px-2 py-0.5 rounded text-xs font-medium bg-gray-100 text-gray-600">
-                          —
-                        </span>
+                        <span className="text-gray-400">—</span>
                       )}
                     </td>
                     
                     {/* Email/Generation Status */}
-                    <td className="px-6 py-4">
+                    <td className="px-4 py-4">
                       {lead.generation_status === 'ready' ? (
-                        <div>
+                        <div className="min-w-0">
                           <span className="inline-flex items-center px-1.5 py-0.5 rounded text-xs font-medium bg-green-100 text-green-800 mb-1">
                             AI
                           </span>
-                          <div className="text-xs text-gray-600 truncate max-w-xs" title={lead.generated_subject}>
-                            {lead.generated_subject?.slice(0, 40)}...
+                          <div className="text-xs text-gray-600 truncate" title={lead.generated_subject}>
+                            {lead.generated_subject?.slice(0, 30)}...
                           </div>
                         </div>
                       ) : lead.generation_status === 'generating' ? (
                         <span className="inline-flex items-center px-2 py-0.5 rounded text-xs font-medium bg-purple-100 text-purple-800">
-                          <Sparkles className="w-3 h-3 mr-1 animate-pulse" /> Generating...
+                          <Sparkles className="w-3 h-3 mr-1 animate-pulse" /> Generating
                         </span>
                       ) : lead.generation_status === 'failed' ? (
                         <span className="inline-flex items-center px-2 py-0.5 rounded text-xs font-medium bg-red-100 text-red-800">
@@ -477,18 +470,18 @@ export default function CampaignDetailPage() {
                         </span>
                       ) : (
                         <span className="inline-flex items-center px-1.5 py-0.5 rounded text-xs font-medium bg-gray-100 text-gray-600">
-                          Default
+                          Template
                         </span>
                       )}
                     </td>
                     
                     {/* Status */}
-                    <td className="px-6 py-4">
+                    <td className="px-4 py-4">
                       <StatusBadge status={lead.status} />
                     </td>
                     
                     {/* Actions */}
-                    <td className="px-6 py-4 text-right">
+                    <td className="px-4 py-4 text-right">
                       <div className="flex justify-end gap-2">
                         <Button 
                           size="sm" 
