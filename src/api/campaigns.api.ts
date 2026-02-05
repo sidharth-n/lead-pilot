@@ -109,7 +109,7 @@ campaignsApi.get('/:id', (c) => {
          COUNT(*) as total,
          SUM(CASE WHEN status = 'pending' THEN 1 ELSE 0 END) as pending,
          SUM(CASE WHEN status = 'sending' THEN 1 ELSE 0 END) as sending,
-         SUM(CASE WHEN status = 'sent' THEN 1 ELSE 0 END) as sent,
+         SUM(CASE WHEN email_sent_at IS NOT NULL THEN 1 ELSE 0 END) as sent,
          SUM(CASE WHEN status = 'waiting_follow_up' THEN 1 ELSE 0 END) as waiting_follow_up,
          SUM(CASE WHEN status = 'sending_follow_up' THEN 1 ELSE 0 END) as sending_follow_up,
          SUM(CASE WHEN status = 'follow_up_sent' THEN 1 ELSE 0 END) as follow_up_sent,
