@@ -274,17 +274,22 @@ export default function CampaignDetailPage() {
           </div>
         </div>
         <div className="flex gap-3">
-          <Button 
-            variant={campaign.status === 'active' ? 'secondary' : 'primary'}
-            onClick={toggleStatus}
-            disabled={campaign.status === 'completed'}
-          >
-            {campaign.status === 'active' ? (
-              <><Pause className="w-4 h-4 mr-2" /> Pause</>
-            ) : (
-              <><Play className="w-4 h-4 mr-2" /> Start Campaign</>
-            )}
-          </Button>
+          {campaign.status === 'completed' ? (
+            <Button onClick={() => navigate('/campaigns')}>
+              <Play className="w-4 h-4 mr-2" /> New Campaign
+            </Button>
+          ) : (
+            <Button 
+              variant={campaign.status === 'active' ? 'secondary' : 'primary'}
+              onClick={toggleStatus}
+            >
+              {campaign.status === 'active' ? (
+                <><Pause className="w-4 h-4 mr-2" /> Pause</>
+              ) : (
+                <><Play className="w-4 h-4 mr-2" /> Start Campaign</>
+              )}
+            </Button>
+          )}
           <Button variant="outline" onClick={() => setShowAddLeads(true)}>
             <UserPlus className="w-4 h-4 mr-2" /> Add Leads
           </Button>
@@ -534,7 +539,7 @@ export default function CampaignDetailPage() {
                         <StatusBadge status={lead.status} />
                         {lead.status === 'waiting_follow_up' && lead.follow_up_scheduled_for && (
                           <div className="text-xs text-purple-600 mt-1">
-                            📅 {new Date(lead.follow_up_scheduled_for).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })}
+                            📅 {new Date(lead.follow_up_scheduled_for + 'Z').toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })}
                           </div>
                         )}
                       </div>

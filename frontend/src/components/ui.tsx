@@ -70,7 +70,7 @@ export function StatusBadge({ status }: { status: string }) {
   };
 
   const labels: Record<string, string> = {
-    waiting_follow_up: 'Waiting Follow-up',
+    waiting_follow_up: 'Follow-up Scheduled',
     sending_follow_up: 'Sending Follow-up...',
     follow_up_sent: 'Follow-up Sent',
   };
