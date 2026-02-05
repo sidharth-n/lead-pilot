@@ -1,7 +1,6 @@
-import React, { type ReactNode, useEffect } from 'react';
+import { type ReactNode, useEffect } from 'react';
 import { Link, useLocation, useNavigate } from 'react-router-dom';
-import { LayoutDashboard, Users, Send, Zap } from 'lucide-react';
-import { processorApi } from '../api';
+import { LayoutDashboard, Users, Send } from 'lucide-react';
 import { hasSession } from '../lib/userSession';
 
 interface LayoutProps {
@@ -11,7 +10,6 @@ interface LayoutProps {
 export function Layout({ children }: LayoutProps) {
   const location = useLocation();
   const navigate = useNavigate();
-  const [running, setRunning] = React.useState(false);
 
   // Redirect to onboarding if no session exists
   useEffect(() => {
@@ -21,20 +19,6 @@ export function Layout({ children }: LayoutProps) {
   }, [navigate]);
 
   const isActive = (path: string) => location.pathname === path;
-
-  const runProcessor = async () => {
-    setRunning(true);
-    try {
-      await processorApi.run();
-      // Use a custom event or context in a real app, but this works for demo
-      window.dispatchEvent(new Event('processor-run'));
-      alert('Processor run triggered!');
-    } catch (err: any) {
-      alert('Failed to run processor: ' + err.message);
-    } finally {
-      setRunning(false);
-    }
-  };
 
   return (
     <div className="min-h-screen bg-gray-50 flex">
@@ -77,22 +61,6 @@ export function Layout({ children }: LayoutProps) {
             <Users className="w-5 h-5" /> Contacts
           </Link>
         </nav>
-        
-        <div className="p-4 mt-auto border-t border-gray-200 absolute bottom-0 w-full">
-          <button
-            onClick={runProcessor}
-            disabled={running}
-            className={`w-full flex items-center justify-center gap-2 px-4 py-2 rounded-lg font-medium text-white transition-all ${
-              running ? 'bg-orange-400 cursor-wait' : 'bg-orange-500 hover:bg-orange-600 shadow-sm'
-            }`}
-          >
-            <Zap className="w-4 h-4" />
-            {running ? 'Running...' : 'Run Processor'}
-          </button>
-          <p className="text-xs text-center text-gray-500 mt-2">
-            Manually trigger email sending
-          </p>
-        </div>
       </aside>
 
       {/* Main Content */}

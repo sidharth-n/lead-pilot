@@ -75,10 +75,36 @@ export class CampaignProcessor {
     try {
       await this.processInitialEmails();
       await this.processFollowUps();
+      await this.autoCompleteCampaigns();
     } catch (error) {
       console.error('❌ Processor error:', error);
     } finally {
       this.isRunning = false;
+    }
+  }
+
+  // ============ AUTO-COMPLETE CAMPAIGNS ============
+  
+  private async autoCompleteCampaigns(): Promise<void> {
+    // Find active campaigns where ALL leads are in terminal states
+    const campaigns = query<{ id: string; name: string; total: number; done: number }>(
+      `SELECT c.id, c.name,
+              COUNT(cl.id) as total,
+              SUM(CASE WHEN cl.status IN ('replied', 'follow_up_sent', 'failed', 'completed') THEN 1 ELSE 0 END) as done
+       FROM campaigns c
+       JOIN campaign_leads cl ON cl.campaign_id = c.id
+       WHERE c.status = 'active'
+       GROUP BY c.id
+       HAVING total > 0 AND total = done`
+    );
+
+    for (const campaign of campaigns) {
+      // Mark campaign as completed
+      execute(
+        `UPDATE campaigns SET status = 'completed', updated_at = datetime('now') WHERE id = ?`,
+        [campaign.id]
+      );
+      console.log(`🏁 Campaign "${campaign.name}" auto-completed (all ${campaign.total} leads done)`);
     }
   }
 

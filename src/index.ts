@@ -25,8 +25,8 @@ console.log('🚀 Starting Cadence...');
 initializeDatabase();
 emailGenerator.start();
 
-// Start processor (commented out by default to avoid conflicts during dev, enable if needed)
-// processor.start();
+// Start processor (auto-runs every 30 seconds to send emails and follow-ups)
+processor.start();
 
 const port = parseInt(process.env.PORT || '3000', 10);
 
