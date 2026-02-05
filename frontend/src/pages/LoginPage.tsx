@@ -86,7 +86,7 @@ export default function LoginPage() {
       <div className="hidden lg:flex flex-1 bg-gradient-to-br from-indigo-500 via-purple-500 to-indigo-600 items-center justify-center">
         <div className="text-center">
           <div className="inline-flex items-center justify-center w-20 h-20 bg-white/20 backdrop-blur-sm rounded-2xl mb-6">
-            <Rocket className="w-10 h-10 text-white" />
+            <img src="/logo.png" alt="LeadPilot" className="w-12 h-12 object-contain" />
           </div>
           <h2 className="text-4xl font-bold text-white mb-2">LeadPilot</h2>
           <p className="text-white/80 text-lg">AI-powered cold email automation</p>
