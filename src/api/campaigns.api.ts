@@ -185,13 +185,14 @@ campaignsApi.put('/:id', async (c) => {
       return c.json(createError('No fields to update', ErrorCodes.VALIDATION_ERROR), 400);
     }
     
-    updates.push('updated_at = datetime("now")');
-    values.push(id);
+    updates.push("updated_at = datetime('now')");
     
-    execute(
-      `UPDATE campaigns SET ${updates.join(', ')} WHERE id = ?`,
-      values
-    );
+    const query = `UPDATE campaigns SET ${updates.join(', ')} WHERE id = ?`;
+    const params = [...values, id];
+    console.log('🔍 UPDATE SQL:', query);
+    console.log('🔍 UPDATE VALUES:', params);
+    
+    execute(query, params);
     
     const updatedCampaign = queryOne<Campaign>('SELECT * FROM campaigns WHERE id = ?', [id]);
     console.log(`📝 Campaign "${updatedCampaign?.name}" updated`);
@@ -199,6 +200,7 @@ campaignsApi.put('/:id', async (c) => {
     return c.json({ campaign: updatedCampaign });
   } catch (error) {
     console.error('Error updating campaign:', error);
+    console.error('Error details:', JSON.stringify(error, null, 2));
     return c.json(CommonErrors.internalError(), 500);
   }
 });

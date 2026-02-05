@@ -25,7 +25,6 @@ export default function CampaignDetailPage() {
   const [contacts, setContacts] = useState<any[]>([]);
   const [loading, setLoading] = useState(true);
   const [showAddLeads, setShowAddLeads] = useState(false);
-  const [selectedContacts, setSelectedContacts] = useState<string[]>([]);
   const [simulating, setSimulating] = useState<string | null>(null);
   
   // Lead Selection State (for research/generate actions)
@@ -253,14 +252,12 @@ export default function CampaignDetailPage() {
           existingLeadIds={leads?.map(l => l.contact_id) || []}
           onClose={() => {
             setShowAddLeads(false);
-            setSelectedContacts([]);
           }}
           onAdd={async (contactIds) => {
             if (!id) return;
             try {
               await campaignsApi.addLeads(id, contactIds);
               setShowAddLeads(false);
-              setSelectedContacts([]);
               loadData();
             } catch (err: any) {
               alert('Failed to add leads: ' + err.message);
@@ -502,7 +499,7 @@ export default function CampaignDetailPage() {
       {/* Settings Modal */}
       {showSettings && editData && (
         <div className="fixed inset-0 bg-black/50 flex items-center justify-center z-50 p-4">
-          <div className="bg-white rounded-2xl w-full max-w-2xl max-h-[90vh] overflow-hidden shadow-2xl">
+          <div className="bg-white rounded-2xl w-full max-w-4xl max-h-[90vh] overflow-hidden shadow-2xl">
             {/* Header */}
             <div className="flex items-center justify-between px-6 py-4 border-b bg-gray-50">
               <h2 className="text-xl font-bold text-gray-900">Campaign Settings</h2>
@@ -582,6 +579,18 @@ export default function CampaignDetailPage() {
                         value={editData.body_template}
                         onChange={e => setEditData({ ...editData, body_template: e.target.value })}
                       />
+                      <div className="flex gap-1 mt-1">
+                        {VARIABLES.map(v => (
+                          <button
+                            key={v.key}
+                            type="button"
+                            onClick={() => setEditData({ ...editData, body_template: editData.body_template + `{{${v.key}}}` })}
+                            className="px-2 py-0.5 text-xs bg-blue-50 text-blue-600 rounded hover:bg-blue-100"
+                          >
+                            {v.label}
+                          </button>
+                        ))}
+                      </div>
                     </div>
                   </div>
                 )}
@@ -630,6 +639,18 @@ export default function CampaignDetailPage() {
                         value={editData.follow_up_subject}
                         onChange={e => setEditData({ ...editData, follow_up_subject: e.target.value })}
                       />
+                      <div className="flex gap-1 mt-1">
+                        {VARIABLES.map(v => (
+                          <button
+                            key={v.key}
+                            type="button"
+                            onClick={() => setEditData({ ...editData, follow_up_subject: editData.follow_up_subject + `{{${v.key}}}` })}
+                            className="px-2 py-0.5 text-xs bg-orange-50 text-orange-600 rounded hover:bg-orange-100"
+                          >
+                            {v.label}
+                          </button>
+                        ))}
+                      </div>
                     </div>
                     <div>
                       <label className="block text-sm font-medium text-gray-700 mb-1">Follow-up Body</label>
@@ -639,6 +660,18 @@ export default function CampaignDetailPage() {
                         value={editData.follow_up_body}
                         onChange={e => setEditData({ ...editData, follow_up_body: e.target.value })}
                       />
+                      <div className="flex gap-1 mt-1">
+                        {VARIABLES.map(v => (
+                          <button
+                            key={v.key}
+                            type="button"
+                            onClick={() => setEditData({ ...editData, follow_up_body: editData.follow_up_body + `{{${v.key}}}` })}
+                            className="px-2 py-0.5 text-xs bg-orange-50 text-orange-600 rounded hover:bg-orange-100"
+                          >
+                            {v.label}
+                          </button>
+                        ))}
+                      </div>
                     </div>
                     <div>
                       <label className="block text-sm font-medium text-gray-700 mb-1">Delay (minutes)</label>
