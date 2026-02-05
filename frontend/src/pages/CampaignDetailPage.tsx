@@ -194,6 +194,24 @@ export default function CampaignDetailPage() {
     }
   };
 
+  // Handle deleting selected leads from campaign
+  const handleDeleteSelected = async () => {
+    if (selectedLeads.length === 0) {
+      alert('Please select at least one lead to remove.');
+      return;
+    }
+    if (!confirm(`Are you sure you want to remove ${selectedLeads.length} lead(s) from this campaign?`)) {
+      return;
+    }
+    try {
+      await campaignsApi.removeLeads(id!, selectedLeads);
+      setSelectedLeads([]);
+      loadData();
+    } catch (err: any) {
+      alert('Failed to remove leads: ' + err.message);
+    }
+  };
+
   // Calculate stats
   const researchStats = {
     researched: leads.filter(l => l.research_status === 'complete').length,
@@ -323,6 +341,15 @@ export default function CampaignDetailPage() {
                 >
                   <Sparkles className={`w-4 h-4 mr-1 ${isGenerating ? 'animate-pulse' : ''}`} />
                   {isGenerating ? 'Generating...' : 'Generate'}
+                </Button>
+                <Button 
+                  size="sm" 
+                  variant="outline"
+                  onClick={handleDeleteSelected}
+                  disabled={selectedLeads.length === 0}
+                  className="text-red-600 border-red-200 hover:bg-red-50"
+                >
+                  <Trash2 className="w-4 h-4" />
                 </Button>
               </div>
             )}

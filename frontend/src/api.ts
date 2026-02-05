@@ -37,6 +37,8 @@ export const campaignsApi = {
   addLeads: (id: string, contactIds: string[]) => 
     api(`/campaigns/${id}/leads`, { method: 'POST', body: JSON.stringify({ contact_ids: contactIds }) }),
   getLeads: (id: string) => api<{ leads: any[] }>(`/campaigns/${id}/leads`),
+  removeLeads: (id: string, leadIds: string[]) =>
+    api(`/campaigns/${id}/leads`, { method: 'DELETE', body: JSON.stringify({ lead_ids: leadIds }) }),
   simulateReply: (leadId: string) => 
     api(`/campaigns/leads/${leadId}/simulate-reply`, { method: 'POST' }),
 };

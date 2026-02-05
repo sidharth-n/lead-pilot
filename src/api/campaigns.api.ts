@@ -407,6 +407,46 @@ campaignsApi.get('/:id/leads', (c) => {
   }
 });
 
+// DELETE /api/campaigns/:id/leads - Remove leads from campaign
+campaignsApi.delete('/:id/leads', async (c) => {
+  try {
+    const campaignId = c.req.param('id');
+    const body = await c.req.json<{ lead_ids: string[] }>();
+    
+    if (!body.lead_ids || body.lead_ids.length === 0) {
+      return c.json(createError('No lead IDs provided', ErrorCodes.MISSING_FIELD), 400);
+    }
+    
+    // Verify campaign exists
+    const campaign = queryOne<Campaign>(
+      'SELECT id FROM campaigns WHERE id = ? AND user_id = ?',
+      [campaignId, TEST_USER_ID]
+    );
+    
+    if (!campaign) {
+      return c.json(CommonErrors.campaignNotFound(), 404);
+    }
+    
+    // Delete the leads from campaign
+    const placeholders = body.lead_ids.map(() => '?').join(',');
+    execute(
+      `DELETE FROM campaign_leads WHERE id IN (${placeholders}) AND campaign_id = ?`,
+      [...body.lead_ids, campaignId]
+    );
+    
+    console.log(`🗑️ Removed ${body.lead_ids.length} leads from campaign ${campaignId}`);
+    
+    return c.json({ 
+      success: true, 
+      message: `Removed ${body.lead_ids.length} lead(s) from campaign`,
+      removed: body.lead_ids.length
+    });
+  } catch (error) {
+    console.error('Error removing leads:', error);
+    return c.json(CommonErrors.internalError(), 500);
+  }
+});
+
 // POST /api/campaigns/leads/:id/simulate-reply - IMPORTANT: For testing!
 campaignsApi.post('/leads/:id/simulate-reply', (c) => {
   try {
