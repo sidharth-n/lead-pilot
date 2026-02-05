@@ -1,7 +1,8 @@
-import React, { type ReactNode } from 'react';
-import { Link, useLocation } from 'react-router-dom';
+import React, { type ReactNode, useEffect } from 'react';
+import { Link, useLocation, useNavigate } from 'react-router-dom';
 import { LayoutDashboard, Users, Send, Zap } from 'lucide-react';
 import { processorApi } from '../api';
+import { hasSession } from '../lib/userSession';
 
 interface LayoutProps {
   children: ReactNode;
@@ -9,7 +10,15 @@ interface LayoutProps {
 
 export function Layout({ children }: LayoutProps) {
   const location = useLocation();
+  const navigate = useNavigate();
   const [running, setRunning] = React.useState(false);
+
+  // Redirect to onboarding if no session exists
+  useEffect(() => {
+    if (!hasSession()) {
+      navigate('/onboarding');
+    }
+  }, [navigate]);
 
   const isActive = (path: string) => location.pathname === path;
 

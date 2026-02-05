@@ -2,17 +2,40 @@
 
 import { Hono } from 'hono';
 import { v4 as uuid } from 'uuid';
-import { query, queryOne, execute, atomicUpdate } from '../database/connection';
+import { query, queryOne, execute, atomicUpdate, getDatabase } from '../database/connection';
 import { validateCampaignInput, validateContactIds } from '../utils/validation';
 import { CommonErrors, ErrorCodes, createError } from '../utils/errors';
 import type { Campaign, CampaignLead, CreateCampaignInput } from '../types';
+import type { Context } from 'hono';
 
 const campaignsApi = new Hono();
-const TEST_USER_ID = 'test-user-001';
+
+// Extract user ID from X-User-Session header and ensure user exists
+function getUserId(c: Context): string {
+  const sessionId = c.req.header('X-User-Session');
+  if (!sessionId) {
+    return 'test-user-001'; // fallback for testing
+  }
+  
+  // Ensure user exists
+  const db = getDatabase();
+  const existing = db.prepare('SELECT id FROM users WHERE id = ?').get(sessionId);
+  if (!existing) {
+    db.prepare(`INSERT INTO users (id, email, name) VALUES (?, ?, ?)`).run(
+      sessionId, 
+      `${sessionId.substring(0, 8)}@session.local`, 
+      'Session User'
+    );
+    console.log(`✅ Created new session user: ${sessionId.substring(0, 8)}...`);
+  }
+  
+  return sessionId;
+}
 
 // GET /api/campaigns/stats - Dashboard stats
 campaignsApi.get('/stats', (c) => {
   try {
+    const userId = getUserId(c);
     const stats = queryOne<{
       active_campaigns: number;
       total_leads: number;
@@ -27,7 +50,7 @@ campaignsApi.get('/stats', (c) => {
          JOIN campaigns c ON cl.campaign_id = c.id 
          WHERE c.user_id = ? AND date(el.created_at) = date('now') AND el.status = 'sent') as emails_sent_today,
         (SELECT COUNT(*) FROM campaign_leads cl JOIN campaigns c ON cl.campaign_id = c.id WHERE c.user_id = ? AND cl.replied_at IS NOT NULL) as total_replies
-    `, [TEST_USER_ID, TEST_USER_ID, TEST_USER_ID, TEST_USER_ID]);
+    `, [userId, userId, userId, userId]);
     
     return c.json(stats || { active_campaigns: 0, total_leads: 0, emails_sent_today: 0, total_replies: 0 });
   } catch (error) {
@@ -41,7 +64,7 @@ campaignsApi.get('/', (c) => {
   try {
     const campaigns = query<Campaign>(
       'SELECT * FROM campaigns WHERE user_id = ? ORDER BY created_at DESC',
-      [TEST_USER_ID]
+      [getUserId(c)]
     );
     return c.json({ campaigns, count: campaigns.length });
   } catch (error) {
@@ -61,7 +84,7 @@ campaignsApi.get('/:id', (c) => {
     
     const campaign = queryOne<Campaign>(
       'SELECT * FROM campaigns WHERE id = ? AND user_id = ?',
-      [id, TEST_USER_ID]
+      [id, getUserId(c)]
     );
     
     if (!campaign) {
@@ -126,7 +149,7 @@ campaignsApi.post('/', async (c) => {
        ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)`,
       [
         id,
-        TEST_USER_ID,
+        getUserId(c),
         body.name.trim(),
         body.from_name.trim(),
         body.from_email.trim().toLowerCase(),
@@ -159,7 +182,7 @@ campaignsApi.put('/:id', async (c) => {
     // Check campaign exists
     const campaign = queryOne<Campaign>(
       'SELECT * FROM campaigns WHERE id = ? AND user_id = ?',
-      [id, TEST_USER_ID]
+      [id, getUserId(c)]
     );
     
     if (!campaign) {
@@ -239,7 +262,7 @@ campaignsApi.post('/:id/start', (c) => {
     // Check campaign exists
     const campaign = queryOne<Campaign>(
       'SELECT * FROM campaigns WHERE id = ? AND user_id = ?',
-      [id, TEST_USER_ID]
+      [id, getUserId(c)]
     );
     
     if (!campaign) {
@@ -294,7 +317,7 @@ campaignsApi.post('/:id/pause', (c) => {
     
     const campaign = queryOne<Campaign>(
       'SELECT * FROM campaigns WHERE id = ? AND user_id = ?',
-      [id, TEST_USER_ID]
+      [id, getUserId(c)]
     );
     
     if (!campaign) {
@@ -341,7 +364,7 @@ campaignsApi.post('/:id/leads', async (c) => {
     // Verify campaign exists
     const campaign = queryOne<Campaign>(
       'SELECT * FROM campaigns WHERE id = ? AND user_id = ?',
-      [campaignId, TEST_USER_ID]
+      [campaignId, getUserId(c)]
     );
     
     if (!campaign) {
@@ -364,7 +387,7 @@ campaignsApi.post('/:id/leads', async (c) => {
       // Verify contact exists
       const contact = queryOne<{ id: string }>(
         'SELECT id FROM contacts WHERE id = ? AND user_id = ?',
-        [contactId, TEST_USER_ID]
+        [contactId, getUserId(c)]
       );
       
       if (!contact) {
@@ -410,7 +433,7 @@ campaignsApi.get('/:id/leads', (c) => {
     // Verify campaign exists
     const campaign = queryOne<Campaign>(
       'SELECT id FROM campaigns WHERE id = ? AND user_id = ?',
-      [campaignId, TEST_USER_ID]
+      [campaignId, getUserId(c)]
     );
     
     if (!campaign) {
@@ -446,7 +469,7 @@ campaignsApi.delete('/:id/leads', async (c) => {
     // Verify campaign exists
     const campaign = queryOne<Campaign>(
       'SELECT id FROM campaigns WHERE id = ? AND user_id = ?',
-      [campaignId, TEST_USER_ID]
+      [campaignId, getUserId(c)]
     );
     
     if (!campaign) {
@@ -541,7 +564,7 @@ campaignsApi.delete('/:id', (c) => {
     
     const campaign = queryOne<Campaign>(
       'SELECT * FROM campaigns WHERE id = ? AND user_id = ?',
-      [id, TEST_USER_ID]
+      [id, getUserId(c)]
     );
     
     if (!campaign) {

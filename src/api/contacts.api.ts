@@ -2,22 +2,43 @@
 
 import { Hono } from 'hono';
 import { v4 as uuid } from 'uuid';
-import { query, queryOne, execute } from '../database/connection';
+import { query, queryOne, execute, getDatabase } from '../database/connection';
 import { validateContactInput } from '../utils/validation';
 import { CommonErrors, ErrorCodes, createError } from '../utils/errors';
 import type { Contact, CreateContactInput } from '../types';
+import type { Context } from 'hono';
 
 const contactsApi = new Hono();
 
-// For now, use a hardcoded user ID (will add auth later)
-const TEST_USER_ID = 'test-user-001';
+// Extract user ID from X-User-Session header and ensure user exists
+function getUserId(c: Context): string {
+  const sessionId = c.req.header('X-User-Session');
+  if (!sessionId) {
+    return 'test-user-001'; // fallback for testing
+  }
+  
+  // Ensure user exists
+  const db = getDatabase();
+  const existing = db.prepare('SELECT id FROM users WHERE id = ?').get(sessionId);
+  if (!existing) {
+    db.prepare(`INSERT INTO users (id, email, name) VALUES (?, ?, ?)`).run(
+      sessionId, 
+      `${sessionId.substring(0, 8)}@session.local`, 
+      'Session User'
+    );
+    console.log(`✅ Created new session user: ${sessionId.substring(0, 8)}...`);
+  }
+  
+  return sessionId;
+}
 
 // GET /api/contacts - List all contacts
 contactsApi.get('/', (c) => {
   try {
+    const userId = getUserId(c);
     const contacts = query<Contact>(
       'SELECT * FROM contacts WHERE user_id = ? ORDER BY created_at DESC',
-      [TEST_USER_ID]
+      [userId]
     );
     return c.json({ contacts, count: contacts.length });
   } catch (error) {
@@ -35,9 +56,10 @@ contactsApi.get('/:id', (c) => {
       return c.json(createError('Contact ID is required', ErrorCodes.MISSING_FIELD), 400);
     }
     
+    const userId = getUserId(c);
     const contact = queryOne<Contact>(
       'SELECT * FROM contacts WHERE id = ? AND user_id = ?',
-      [id, TEST_USER_ID]
+      [id, userId]
     );
     
     if (!contact) {
@@ -70,7 +92,7 @@ contactsApi.post('/', async (c) => {
          VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)`,
         [
           id,
-          TEST_USER_ID,
+          getUserId(c),
           body.email.trim().toLowerCase(),
           body.first_name?.trim() || null,
           body.last_name?.trim() || null,
@@ -120,6 +142,8 @@ contactsApi.post('/bulk', async (c) => {
     let skipped = 0;
     const errors: string[] = [];
     
+    const userId = getUserId(c);
+    
     for (let i = 0; i < body.contacts.length; i++) {
       const contact = body.contacts[i];
       
@@ -137,7 +161,7 @@ contactsApi.post('/bulk', async (c) => {
            VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)`,
           [
             uuid(),
-            TEST_USER_ID,
+            userId,
             contact.email.trim().toLowerCase(),
             contact.first_name?.trim() || null,
             contact.last_name?.trim() || null,
@@ -203,9 +227,10 @@ contactsApi.delete('/bulk', async (c) => {
         continue;
       }
       
+      const userId = getUserId(c);
       const result = execute(
         'DELETE FROM contacts WHERE id = ? AND user_id = ?',
-        [id, TEST_USER_ID]
+        [id, userId]
       );
       
       if (result.changes > 0) {
@@ -254,9 +279,10 @@ contactsApi.delete('/:id', (c) => {
       );
     }
     
+    const userId = getUserId(c);
     const result = execute(
       'DELETE FROM contacts WHERE id = ? AND user_id = ?',
-      [id, TEST_USER_ID]
+      [id, userId]
     );
     
     if (result.changes === 0) {

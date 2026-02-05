@@ -1,11 +1,16 @@
+import { getSessionId } from './lib/userSession';
+
 export async function api<T>(
   endpoint: string,
   options: RequestInit = {}
 ): Promise<T> {
+  const sessionId = getSessionId();
+  
   const response = await fetch(`/api${endpoint}`, {
     ...options,
     headers: {
       'Content-Type': 'application/json',
+      ...(sessionId ? { 'X-User-Session': sessionId } : {}),
       ...options.headers,
     },
   });

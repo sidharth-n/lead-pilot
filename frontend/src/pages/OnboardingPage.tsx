@@ -1,8 +1,52 @@
+import { useState } from 'react';
 import { useNavigate } from 'react-router-dom';
-import { Mail, Lock, ArrowRight, Zap } from 'lucide-react';
+import { Mail, Lock, ArrowRight, Zap, Loader2 } from 'lucide-react';
+import { createSession } from '../lib/userSession';
 
 export default function OnboardingPage() {
   const navigate = useNavigate();
+  const [isLoading, setIsLoading] = useState(false);
+
+  const handleStartTrial = async () => {
+    setIsLoading(true);
+    
+    // Create a new session for this user
+    createSession();
+    
+    // Simulate workspace setup with a brief delay for better UX
+    await new Promise(resolve => setTimeout(resolve, 1500));
+    
+    // Navigate to dashboard
+    navigate('/dashboard');
+  };
+
+  // Loading screen
+  if (isLoading) {
+    return (
+      <div className="min-h-screen bg-gradient-to-br from-slate-950 via-slate-900 to-slate-950 text-white flex flex-col items-center justify-center">
+        {/* Animated background */}
+        <div className="absolute inset-0 bg-[linear-gradient(rgba(59,130,246,0.03)_1px,transparent_1px),linear-gradient(90deg,rgba(59,130,246,0.03)_1px,transparent_1px)] bg-[size:64px_64px] [mask-image:radial-gradient(ellipse_50%_50%_at_50%_50%,black,transparent)]"></div>
+        
+        {/* Glowing orbs */}
+        <div className="absolute top-1/4 left-1/4 w-96 h-96 bg-blue-500/20 rounded-full blur-3xl animate-pulse"></div>
+        <div className="absolute bottom-1/4 right-1/4 w-96 h-96 bg-violet-500/20 rounded-full blur-3xl animate-pulse delay-500"></div>
+        
+        <div className="relative z-10 flex flex-col items-center">
+          {/* Logo */}
+          <div className="w-16 h-16 bg-gradient-to-br from-blue-500 to-violet-600 rounded-2xl flex items-center justify-center shadow-lg shadow-blue-500/30 mb-8 animate-pulse">
+            <Zap className="w-8 h-8 text-white" />
+          </div>
+          
+          {/* Spinner */}
+          <Loader2 className="w-8 h-8 text-blue-400 animate-spin mb-6" />
+          
+          {/* Text */}
+          <h2 className="text-2xl font-bold mb-2">Setting up your workspace...</h2>
+          <p className="text-slate-400">This will only take a moment</p>
+        </div>
+      </div>
+    );
+  }
 
   return (
     <div className="min-h-screen bg-gradient-to-br from-slate-950 via-slate-900 to-slate-950 text-white overflow-hidden flex flex-col">
@@ -86,7 +130,7 @@ export default function OnboardingPage() {
           <div className="relative group">
             <div className="absolute inset-0 bg-gradient-to-r from-blue-500/20 to-violet-500/20 rounded-2xl blur-xl opacity-75 group-hover:opacity-100 transition-opacity"></div>
             <div className="relative bg-slate-800/60 backdrop-blur-xl rounded-2xl border border-blue-500/30 p-8 hover:border-blue-400/50 transition-all cursor-pointer"
-                 onClick={() => navigate('/dashboard')}>
+                 onClick={handleStartTrial}>
               {/* Active Badge */}
               <div className="absolute -top-3 -right-3 px-3 py-1 text-xs font-semibold bg-gradient-to-r from-blue-500 to-violet-500 text-white rounded-full shadow-lg shadow-blue-500/25">
                 ✓ Available
