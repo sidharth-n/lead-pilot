@@ -285,7 +285,8 @@ export default function ContactsPage() {
                   className={`hover:bg-gray-50 transition-colors cursor-pointer ${selectedContacts.includes(contact.id) ? 'bg-blue-50' : ''}`}
                   onClick={(e) => {
                     // Don't open detail if clicking checkbox
-                    if ((e.target as HTMLElement).type !== 'checkbox') {
+                    const target = e.target as HTMLInputElement;
+                    if (target.type !== 'checkbox') {
                       setDetailContact(contact);
                     }
                   }}

@@ -14,7 +14,7 @@ interface PreviewEmailModalProps {
   onSave: () => void;
 }
 
-export function PreviewEmailModal({ campaignId, leadId, aiPrompt, onClose, onSave }: PreviewEmailModalProps) {
+export function PreviewEmailModal({ campaignId: _campaignId, leadId, aiPrompt, onClose, onSave }: PreviewEmailModalProps) {
   const [loading, setLoading] = useState(true);
   const [regenerating, setRegenerating] = useState(false);
   const [saving, setSaving] = useState(false);
