@@ -5,6 +5,7 @@ import { Layout } from '../components/Layout';
 import { Button, Card, StatusBadge } from '../components/ui';
 import { LeadDetailModal } from '../components/LeadDetailModal';
 import { AddLeadsModal } from '../components/AddLeadsModal';
+import { useToast } from '../components/Toast';
 import { campaignsApi, contactsApi, researchApi, generationApi } from '../api';
 import { format } from 'date-fns';
 
@@ -19,6 +20,7 @@ const VARIABLES = [
 export default function CampaignDetailPage() {
   const { id } = useParams<{ id: string }>();
   const navigate = useNavigate();
+  const { addToast } = useToast();
   const [campaign, setCampaign] = useState<any>(null);
   const [leads, setLeads] = useState<any[]>([]);
   const [stats, setStats] = useState<any>(null);
@@ -75,12 +77,14 @@ export default function CampaignDetailPage() {
     try {
       if (campaign.status === 'active') {
         await campaignsApi.pause(id);
+        addToast({ type: 'info', message: 'Campaign paused' });
       } else {
         await campaignsApi.start(id);
+        addToast({ type: 'success', message: '🚀 Campaign started! Emails will be sent automatically.' });
       }
       loadData();
     } catch (err: any) {
-      alert('Action failed: ' + err.message);
+      addToast({ type: 'error', message: 'Action failed: ' + err.message });
     }
   };
 
@@ -89,9 +93,10 @@ export default function CampaignDetailPage() {
     setSimulating(leadId);
     try {
       await campaignsApi.simulateReply(leadId);
+      addToast({ type: 'success', message: '✅ Reply simulated! Follow-up cancelled.' });
       setTimeout(loadData, 500);
     } catch (err: any) {
-      alert('Failed: ' + err.message);
+      addToast({ type: 'error', message: 'Failed: ' + err.message });
     } finally {
       setSimulating(null);
     }
@@ -525,7 +530,14 @@ export default function CampaignDetailPage() {
                     
                     {/* Status */}
                     <td className="px-4 py-4">
-                      <StatusBadge status={lead.status} />
+                      <div>
+                        <StatusBadge status={lead.status} />
+                        {lead.status === 'waiting_follow_up' && lead.follow_up_scheduled_for && (
+                          <div className="text-xs text-purple-600 mt-1">
+                            📅 {new Date(lead.follow_up_scheduled_for).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })}
+                          </div>
+                        )}
+                      </div>
                     </td>
                     
                     {/* Actions */}
