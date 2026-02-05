@@ -338,7 +338,7 @@ export default function CampaignDetailPage() {
             <div className="flex items-center gap-4">
               <h3 className="font-semibold text-gray-900">Campaign Leads</h3>
               <span className="flex items-center text-xs text-gray-500 gap-1">
-                <RefreshCw className="w-3 h-3 animate-spin" /> Live Updating
+                <RefreshCw className="w-3 h-3 animate-spin" /> 
               </span>
             </div>
             
@@ -366,7 +366,7 @@ export default function CampaignDetailPage() {
                   className="text-purple-600 border-purple-200 hover:bg-purple-50"
                 >
                   <Sparkles className={`w-4 h-4 mr-1 ${isGenerating ? 'animate-pulse' : ''}`} />
-                  {isGenerating ? 'Generating...' : 'Generate'}
+                  {isGenerating ? 'Generating...' : 'AI Generate'}
                 </Button>
                 <Button 
                   size="sm" 

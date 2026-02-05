@@ -10,6 +10,8 @@ export class OpenAIService implements IAIService {
   constructor() {
     this.client = new OpenAI({
       apiKey: config.ai.openaiApiKey,
+      timeout: 30000, // 30 second timeout to prevent hanging
+      maxRetries: 2,  // Built-in retries for transient errors
     });
   }
 
