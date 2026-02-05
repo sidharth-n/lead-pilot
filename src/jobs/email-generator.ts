@@ -34,11 +34,12 @@ export class EmailGenerator {
   private intervalId: ReturnType<typeof setInterval> | null = null;
   private config: GeneratorConfig;
   private readonly MAX_RETRIES = 3;
-  private readonly RETRY_DELAY_MS = 2000;
+  private readonly BASE_DELAY_MS = 2000;
+  private readonly DELAY_BETWEEN_LEADS_MS = 3000; // 3 seconds between leads
 
   constructor(config: Partial<GeneratorConfig> = {}) {
     this.config = {
-      batchSize: config.batchSize || 3, // Lower batch size for AI rate limits
+      batchSize: config.batchSize || 2, // Process 2 leads at a time max
       intervalMs: config.intervalMs || 5000,
     };
   }
@@ -125,8 +126,13 @@ export class EmailGenerator {
       
       // Add delay between leads to avoid rate limiting (except for last one)
       if (i < leads.length - 1) {
-        await this.delay(1000);
+        console.log(`⏳ Waiting ${this.DELAY_BETWEEN_LEADS_MS}ms before next lead...`);
+        await this.delay(this.DELAY_BETWEEN_LEADS_MS);
       }
+    }
+    
+    if (leads.length > 0) {
+      console.log(`✅ Generation batch complete: ${leads.length} leads processed`);
     }
   }
 
@@ -186,11 +192,18 @@ export class EmailGenerator {
         }
         
         // Check if we should retry (rate limit or transient error)
-        if (result.error?.includes('Rate limited') || result.error?.includes('429')) {
+        const isRetryable = result.error?.includes('Rate limited') || 
+                           result.error?.includes('429') ||
+                           result.error?.includes('timeout') ||
+                           result.error?.includes('ECONNRESET');
+        
+        if (isRetryable) {
           retryCount++;
-          const delayMs = this.RETRY_DELAY_MS * Math.pow(2, retryCount - 1); // Exponential backoff
-          console.log(`⏳ Rate limited, retrying in ${delayMs}ms (attempt ${retryCount}/${this.MAX_RETRIES})...`);
-          await this.delay(delayMs);
+          if (retryCount <= this.MAX_RETRIES) {
+            const delayMs = this.BASE_DELAY_MS * Math.pow(2, retryCount - 1) + Math.random() * 1000; // Exponential backoff with jitter
+            console.log(`⏳ Retrying in ${Math.round(delayMs)}ms (attempt ${retryCount}/${this.MAX_RETRIES})...`);
+            await this.delay(delayMs);
+          }
         } else {
           // Non-retryable error
           break;

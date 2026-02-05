@@ -91,9 +91,59 @@ researchApi.get('/leads/:id', (c) => {
   }
 });
 
-// Background processor for research queue
+// POST /api/research/retry-failed/:campaignId - Retry all failed research in a campaign
+researchApi.post('/retry-failed/:campaignId', async (c) => {
+  try {
+    const campaignId = c.req.param('campaignId');
+    
+    // Find all failed leads in this campaign
+    const failedLeads = query<LeadWithContact>(
+      `SELECT cl.*, c.email, c.first_name, c.company, c.job_title
+       FROM campaign_leads cl
+       JOIN contacts c ON cl.contact_id = c.id
+       WHERE cl.campaign_id = ? AND cl.research_status = 'failed'`,
+      [campaignId]
+    );
+    
+    if (failedLeads.length === 0) {
+      return c.json({ success: true, message: 'No failed leads to retry', retried: 0 });
+    }
+    
+    // Mark them as researching
+    const leadIds = failedLeads.map(l => l.id);
+    const placeholders = leadIds.map(() => '?').join(',');
+    execute(
+      `UPDATE campaign_leads 
+       SET research_status = 'researching', research_error = NULL, updated_at = datetime('now')
+       WHERE id IN (${placeholders})`,
+      leadIds
+    );
+    
+    // Process in background
+    processResearchQueue(failedLeads);
+    
+    return c.json({ 
+      success: true, 
+      message: `Retrying research for ${failedLeads.length} failed leads`,
+      retried: failedLeads.length
+    });
+    
+  } catch (error: any) {
+    console.error('Error retrying failed research:', error);
+    return c.json({ error: error.message || 'Failed to retry' }, 500);
+  }
+});
+
+// Background processor for research queue with rate limiting
 async function processResearchQueue(leads: LeadWithContact[]) {
-  for (const lead of leads) {
+  console.log(`🔍 Starting research queue for ${leads.length} leads (sequential with 2s delay)`);
+  
+  const DELAY_BETWEEN_REQUESTS_MS = 2000; // 2 seconds between requests
+  const MAX_RETRIES = 3;
+  
+  for (let i = 0; i < leads.length; i++) {
+    const lead = leads[i];
+    
     try {
       // Skip if no company
       if (!lead.company) {
@@ -105,18 +155,41 @@ async function processResearchQueue(leads: LeadWithContact[]) {
            WHERE id = ?`,
           [lead.id]
         );
+        console.log(`⏭️ [${i + 1}/${leads.length}] Skipped ${lead.email} (no company)`);
         continue;
       }
 
-      console.log(`🔍 Researching ${lead.company} for ${lead.email}...`);
+      console.log(`🔍 [${i + 1}/${leads.length}] Researching ${lead.company} for ${lead.email}...`);
 
-      const result = await perplexityService.researchCompany({
-        company: lead.company,
-        job_title: lead.job_title || undefined,
-        first_name: lead.first_name || undefined,
-      });
+      let result = null;
+      let retryCount = 0;
+      
+      while (retryCount <= MAX_RETRIES) {
+        result = await perplexityService.researchCompany({
+          company: lead.company,
+          job_title: lead.job_title || undefined,
+          first_name: lead.first_name || undefined,
+        });
 
-      if (result.success && result.summary) {
+        if (result.success && result.summary) {
+          break; // Success!
+        }
+        
+        // Check if we should retry
+        if (result.error?.includes('429') || result.error?.includes('Rate limit')) {
+          retryCount++;
+          if (retryCount <= MAX_RETRIES) {
+            const delayMs = Math.pow(2, retryCount) * 1000 + Math.random() * 1000;
+            console.log(`⏳ [${i + 1}/${leads.length}] Rate limited, retrying in ${Math.round(delayMs)}ms (attempt ${retryCount}/${MAX_RETRIES})...`);
+            await delay(delayMs);
+          }
+        } else {
+          // Non-retryable error
+          break;
+        }
+      }
+
+      if (result?.success && result?.summary) {
         execute(
           `UPDATE campaign_leads SET 
              research_status = 'complete',
@@ -127,7 +200,7 @@ async function processResearchQueue(leads: LeadWithContact[]) {
            WHERE id = ?`,
           [JSON.stringify({ summary: result.summary, source: result.source }), lead.id]
         );
-        console.log(`✅ Research complete for ${lead.email}`);
+        console.log(`✅ [${i + 1}/${leads.length}] Research complete for ${lead.email}`);
       } else {
         execute(
           `UPDATE campaign_leads SET 
@@ -135,13 +208,13 @@ async function processResearchQueue(leads: LeadWithContact[]) {
              research_error = ?,
              updated_at = datetime('now')
            WHERE id = ?`,
-          [result.error || 'Unknown error', lead.id]
+          [result?.error || 'Unknown error', lead.id]
         );
-        console.log(`❌ Research failed for ${lead.email}: ${result.error}`);
+        console.log(`❌ [${i + 1}/${leads.length}] Research failed for ${lead.email}: ${result?.error}`);
       }
 
     } catch (error: any) {
-      console.error(`Error researching ${lead.email}:`, error);
+      console.error(`❌ [${i + 1}/${leads.length}] Error researching ${lead.email}:`, error);
       execute(
         `UPDATE campaign_leads SET 
            research_status = 'failed',
@@ -151,7 +224,20 @@ async function processResearchQueue(leads: LeadWithContact[]) {
         [error.message || 'Unknown error', lead.id]
       );
     }
+    
+    // Add delay between leads to avoid rate limiting (except for last one)
+    if (i < leads.length - 1) {
+      console.log(`⏳ Waiting ${DELAY_BETWEEN_REQUESTS_MS}ms before next request...`);
+      await delay(DELAY_BETWEEN_REQUESTS_MS);
+    }
   }
+  
+  console.log(`✅ Research queue complete: ${leads.length} leads processed`);
+}
+
+// Helper delay function
+function delay(ms: number): Promise<void> {
+  return new Promise(resolve => setTimeout(resolve, ms));
 }
 
 export { researchApi };

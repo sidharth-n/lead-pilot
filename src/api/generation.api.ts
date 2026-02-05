@@ -127,3 +127,47 @@ generationApi.post('/bulk', async (c) => {
     return c.json({ error: error.message || 'Failed to start generation' }, 500);
   }
 });
+
+// POST /api/generation/retry-failed/:campaignId - Retry all failed generation in a campaign
+generationApi.post('/retry-failed/:campaignId', async (c) => {
+  try {
+    const campaignId = c.req.param('campaignId');
+    
+    // Find all failed leads in this campaign
+    const failedLeads = query<{ id: string }>(
+      `SELECT id FROM campaign_leads 
+       WHERE campaign_id = ? AND generation_status = 'failed'`,
+      [campaignId]
+    );
+    
+    if (failedLeads.length === 0) {
+      return c.json({ success: true, message: 'No failed leads to retry', retried: 0 });
+    }
+    
+    // Mark them as generating
+    const leadIds = failedLeads.map(l => l.id);
+    const placeholders = leadIds.map(() => '?').join(',');
+    execute(
+      `UPDATE campaign_leads 
+       SET generation_status = 'generating',
+           generated_subject = NULL,
+           generated_body = NULL,
+           generated_follow_up_subject = NULL,
+           generated_follow_up_body = NULL,
+           last_error = NULL,
+           updated_at = datetime('now')
+       WHERE id IN (${placeholders})`,
+      leadIds
+    );
+    
+    return c.json({ 
+      success: true, 
+      message: `Retrying generation for ${failedLeads.length} failed leads`,
+      retried: failedLeads.length
+    });
+    
+  } catch (error: any) {
+    console.error('Error retrying failed generation:', error);
+    return c.json({ error: error.message || 'Failed to retry' }, 500);
+  }
+});

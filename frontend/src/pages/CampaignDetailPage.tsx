@@ -216,6 +216,7 @@ export default function CampaignDetailPage() {
   const researchStats = {
     researched: leads.filter(l => l.research_status === 'complete').length,
     researching: leads.filter(l => l.research_status === 'researching').length,
+    failed: leads.filter(l => l.research_status === 'failed').length,
   };
 
   const generationStats = {
@@ -223,6 +224,31 @@ export default function CampaignDetailPage() {
     generating: leads.filter(l => l.generation_status === 'generating').length,
     template: leads.filter(l => l.generation_status === 'template').length,
     failed: leads.filter(l => l.generation_status === 'failed').length,
+  };
+
+  // Retry handlers
+  const handleRetryFailedResearch = async () => {
+    if (!id) return;
+    try {
+      const result = await researchApi.retryFailed(id);
+      if (result.retried > 0) {
+        loadData();
+      }
+    } catch (err: any) {
+      alert('Failed to retry: ' + err.message);
+    }
+  };
+
+  const handleRetryFailedGeneration = async () => {
+    if (!id) return;
+    try {
+      const result = await generationApi.retryFailed(id);
+      if (result.retried > 0) {
+        loadData();
+      }
+    } catch (err: any) {
+      alert('Failed to retry: ' + err.message);
+    }
   };
 
   if (loading || !campaign) {
@@ -355,14 +381,36 @@ export default function CampaignDetailPage() {
             )}
           </div>
           
-          {/* Progress indicators */}
-          {(researchStats.researching > 0 || generationStats.generating > 0) && (
-            <div className="mt-2 text-xs text-gray-600">
+          {/* Progress indicators with retry buttons */}
+          {(researchStats.researching > 0 || generationStats.generating > 0 || researchStats.failed > 0 || generationStats.failed > 0) && (
+            <div className="mt-3 flex flex-wrap items-center gap-4 text-xs">
               {researchStats.researching > 0 && (
-                <span className="mr-4">🔍 Researching: {researchStats.researching}</span>
+                <span className="flex items-center gap-1 text-blue-600 bg-blue-50 px-2 py-1 rounded-full">
+                  <RefreshCw className="w-3 h-3 animate-spin" /> Researching: {researchStats.researching}/{leads.length}
+                </span>
               )}
               {generationStats.generating > 0 && (
-                <span>🤖 Generating: {generationStats.generating}</span>
+                <span className="flex items-center gap-1 text-purple-600 bg-purple-50 px-2 py-1 rounded-full">
+                  <Sparkles className="w-3 h-3 animate-pulse" /> Generating: {generationStats.generating}/{leads.length}
+                </span>
+              )}
+              {researchStats.failed > 0 && (
+                <button
+                  onClick={handleRetryFailedResearch}
+                  className="flex items-center gap-1 text-red-600 bg-red-50 px-2 py-1 rounded-full hover:bg-red-100 transition-colors"
+                >
+                  ⚠️ Research Failed: {researchStats.failed} 
+                  <span className="ml-1 underline">Retry</span>
+                </button>
+              )}
+              {generationStats.failed > 0 && (
+                <button
+                  onClick={handleRetryFailedGeneration}
+                  className="flex items-center gap-1 text-red-600 bg-red-50 px-2 py-1 rounded-full hover:bg-red-100 transition-colors"
+                >
+                  ⚠️ Generation Failed: {generationStats.failed}
+                  <span className="ml-1 underline">Retry</span>
+                </button>
               )}
             </div>
           )}

@@ -55,6 +55,8 @@ export const generationApi = {
   regenerate: (leadId: string) => api(`/generation/lead/${leadId}/regenerate`, { method: 'POST' }),
   // Bulk generate for selected leads
   bulkGenerate: (leadIds: string[]) => api(`/generation/bulk`, { method: 'POST', body: JSON.stringify({ lead_ids: leadIds }) }),
+  // Retry all failed generation in a campaign
+  retryFailed: (campaignId: string) => api<{ success: boolean; retried: number }>(`/generation/retry-failed/${campaignId}`, { method: 'POST' }),
 };
 
 export const researchApi = {
@@ -62,4 +64,6 @@ export const researchApi = {
   researchLeads: (leadIds: string[]) => api(`/research/leads`, { method: 'POST', body: JSON.stringify({ lead_ids: leadIds }) }),
   // Get research for a single lead
   getLead: (leadId: string) => api<{ research_status: string; research_data: any }>(`/research/leads/${leadId}`),
+  // Retry all failed research in a campaign
+  retryFailed: (campaignId: string) => api<{ success: boolean; retried: number }>(`/research/retry-failed/${campaignId}`, { method: 'POST' }),
 };
